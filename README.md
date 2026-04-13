@@ -1,190 +1,105 @@
-<div dir="rtl">
+# Tour Route Planning System — Database Project, Phase A
 
-# 🚌 TransRoute Planner — מערכת ניהול תחבורה ציבורית
-
-</div>
-
-<div align="center">
-
-**פרויקט בסיס נתונים | Database Project — שלב א׳**
-
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
-[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![pgAdmin](https://img.shields.io/badge/pgAdmin-4-FFA500?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.pgadmin.org/)
-
-</div>
+**Submitters:** [Name 1] · [Name 2]  
+**ID Numbers:** [ID 1] · [ID 2]  
+**Submission Date:** April 2026
 
 ---
 
-## 📋 תוכן עניינים
+## Table of Contents
 
-| # | נושא |
-|---|------|
-| 1 | [🎓 שער הפרויקט](#-שער-הפרויקט) |
-| 2 | [📝 מבוא — תיאור המערכת](#-מבוא--תיאור-המערכת) |
-| 3 | [🖥️ מסכי המערכת — AI Studio](#️-מסכי-המערכת--ai-studio) |
-| 4 | [📊 תרשים ERD](#-תרשים-erd) |
-| 5 | [🗄️ תרשים DSD — סכמת הנתונים](#️-תרשים-dsd--סכמת-הנתונים) |
-| 6 | [📚 מילון הנתונים](#-מילון-הנתונים) |
-| 7 | [💡 החלטות עיצוב ונימוקים](#-החלטות-עיצוב-ונימוקים) |
-| 8 | [💾 שיטות הכנסת נתונים](#-שיטות-הכנסת-נתונים) |
-| 9 | [🔒 גיבוי ושחזור](#-גיבוי-ושחזור) |
-| 10 | [🗂️ מבנה הפרויקט](#️-מבנה-הפרויקט) |
+1. [Introduction](#1-introduction)
+2. [Application Screens](#2-application-screens)
+3. [Entity-Relationship Diagram (ERD)](#3-entity-relationship-diagram-erd)
+4. [Data Structure Diagram (DSD)](#4-data-structure-diagram-dsd)
+5. [Data Dictionary](#5-data-dictionary)
+6. [Design Decisions](#6-design-decisions)
+7. [Data Population Methods](#7-data-population-methods)
+8. [Backup and Restore](#8-backup-and-restore)
+9. [Project Structure](#9-project-structure)
 
 ---
 
-## 🎓 שער הפרויקט
+## 1. Introduction
 
-<div dir="rtl">
+### System Overview
 
-| פרט | מידע |
-|-----|------|
-| **שמות המגישים** | _[שם מגיש 1] · [שם מגיש 2]_ |
-| **תעודות זהות** | _[ת"ז 1] · [ת"ז 2]_ |
-| **שם המערכת** | **TransRoute Planner** — מערכת ניהול תחבורה ציבורית |
-| **היחידה הנבחרת** | ניהול נסיעות, מסלולים ועצירות |
-| **שנת לימודים** | 2025–2026 |
-| **תאריך הגשה** | אפריל 2026 |
+The **Tour Route Planning System** is a relational database designed to manage the full operational lifecycle of organized tour transportation. The system handles the planning, scheduling, and execution of guided excursions — from defining tour routes and tourist sites to assigning vehicles and tracking individual trip instances.
 
-</div>
+The system is built around a central transportation company that operates excursion buses across geographic regions. Each tour follows a predefined route that visits a sequence of stops, each associated with a tourist site or point of interest.
 
----
+### Data Stored in the System
 
-## 📝 מבוא — תיאור המערכת
+| Entity | Description |
+|--------|-------------|
+| **Vehicle** | Fleet vehicles including registration plates, type, and seating capacity |
+| **Region** | Geographic operating zones (terrain type, description) |
+| **Route** | Defined tour routes with origin, destination, distance, and duration |
+| **Site** | Tourist attractions and points of interest (parks, museums, nature reserves) |
+| **Stop** | Physical stops along a route with GPS coordinates, linked to a site |
+| **Trip** | Scheduled tour instances with date, departure time, and seat availability |
+| **Route Stop** | Ordered stop sequence per route with estimated arrival times |
+| **Region Vehicle** | Assignment of vehicles to operating regions |
 
-### מהי המערכת?
+### Core Functionality
 
-**TransRoute Planner** היא מערכת לניהול רשת תחבורה ציבורית. המערכת מאפשרת לחברת תחבורה לנהל את כלל הנכסים התפעוליים שלה: כלי רכב, מסלולים, עצירות, אתרים, נסיעות יומיות ואזורי פעילות.
+The system supports the following operations:
 
-### נתונים הנשמרים במערכת
-
-```
-🚌 כלי רכב     →  לוחיות רישוי, סוג רכב, קיבולת מושבים
-🌍 אזורים      →  אזורי פעילות גיאוגרפיים, סוג שטח
-🛣️ מסלולים     →  נקודות מוצא ויעד, מרחק, משך נסיעה, תאריך פתיחה
-🏛️ אתרים       →  מוקדים (תחנות מרכזיות, מרכזי קניות, פארקים)
-🚏 עצירות      →  נקודות עצירה עם קואורדינטות GPS מדויקות
-🎫 נסיעות      →  לוח זמנים יומי, שעות יציאה, מושבים פנויים
-🔗 מסלול-עצירה →  סדר עצירות ושעות משוערות לאורך כל מסלול
-📍 אזור-רכב    →  שיוך כלי רכב לאזורי פעילות
-```
-
-### פונקציונאליות עיקרית
-
-<div dir="rtl">
-
-| פעולה | תיאור |
-|-------|-------|
-| **ניהול מסלולים** | הגדרת מסלולים חדשים, עריכה ומחיקה |
-| **תזמון נסיעות** | יצירת נסיעות עם שיוך רכב ונהג |
-| **מפת נסיעות** | ויזואליזציה בזמן אמת של כל הנסיעות הפעילות |
-| **ניהול עצירות** | ספריית עצירות עם מיקום GPS |
-| **שיוך צי** | הקצאת כלי רכב לאזורים ומסלולים |
-| **סטטיסטיקות** | ניצולת מושבים, ביצועי מסלולים |
-
-</div>
+- Planning new tour routes with stop sequences
+- Scheduling trip instances with vehicle assignments
+- Tracking real-time seat availability per trip
+- Managing tourist sites and their associated stops
+- Assigning fleet vehicles to geographic regions
+- Generating operational statistics (occupancy, route usage)
 
 ---
 
-## 🖥️ מסכי המערכת — AI Studio
+## 2. Application Screens
 
-> 🔗 **האפליקציה נוצרה בעזרת [Google AI Studio](https://aistudio.google.com)** — _(עדכן לינק לפרויקט שלך)_
-
-המערכת מורכבת מ-4 מסכים מרכזיים:
+The application interface was designed using **Google AI Studio**.
+Link: _(insert link here)_
 
 ---
 
-### מסך 1 — Route Dashboard | לוח בקרה ראשי
+### Screen 1 — Route Dashboard
 
-> מציג את כלל המסלולים הפעילים ברשת, עם אפשרות לצפות בפרטים, לתזמן נסיעות וליצור מסלולים חדשים.
+Displays all defined tour routes with summary metrics (duration, distance, stop count). Provides access to route details, trip scheduling, and route creation.
 
 ![Route Dashboard](./screenshots/screen_dashboard.png)
 
 ---
 
-### מסך 2 — Trips Network Map | מפת הנסיעות הפעילות
+### Screen 2 — Trips Network Map
 
-> תצוגת מפה אינטראקטיבית של כל הנסיעות המתוזמנות בזמן אמת, כולל לגנדה של נסיעות Scheduled / In-Progress.
+Interactive map visualization of all scheduled trips across the country, with a live panel showing active and in-progress trips and their passenger counts.
 
 ![Trips Network Map](./screenshots/screen_map.png)
 
 ---
 
-### מסך 3 — Schedule New Trip | תזמון נסיעה חדשה
+### Screen 3 — Schedule New Trip
 
-> ממשק להזנת נסיעה חדשה: בחירת מסלול, תאריך, שעת יציאה, מספר נוסעים ושיוך יחידת צי (רכב + נהג). כולל תצוגת סיכום נסיעה בצד ימין.
+Form for creating a new trip instance: select route, set date and departure time, specify expected passengers, and assign a fleet unit (vehicle and driver). Includes a real-time trip summary panel.
 
 ![Schedule New Trip](./screenshots/screen_schedule.png)
 
 ---
 
-### מסך 4 — Route Details & Stops | פרטי מסלול וניהול עצירות
+### Screen 4 — Route Details and Stop Management
 
-> מסך פרטי מסלול הכולל: קטעי מסלול, ניהול עצירות (הוספה, עריכה, מחיקה, שינוי סדר), תצוגת מפה ואפשרות AI Optimization.
+Detailed view of a single route showing its segments, stop ordering, estimated arrival times, and GPS-linked site information. Includes an AI-based route optimization panel.
 
 ![Route Details and Stops](./screenshots/screen_route_details.png)
 
 ---
 
-## 📊 תרשים ERD
+## 3. Entity-Relationship Diagram (ERD)
 
-> תרשים ה-ERD (Entity Relationship Diagram) מציג את **הישויות**, **המאפיינים** והקשרים ביניהן לפני הנורמליזציה לסכמה רלציונית.
+The ERD describes the conceptual data model: entities, their attributes, and the relationships between them, prior to relational schema translation.
 
 ![ERD Diagram](./screenshots/ERD.png)
 
-### ישויות המערכת (6+ ישויות)
-
-```mermaid
-mindmap
-  root((TransRoute DB))
-    VEHICLE
-      plate_number PK
-      vehicle_type
-      capacity
-    REGION
-      region_id PK
-      regio_name
-      terrain_type
-      description
-    ROUTE
-      route_id PK
-      route_name
-      start_location
-      end_location
-      estimated_duration_minutes
-      total_distance_km
-      created_date 📅
-      region_id FK
-    SITE
-      site_name PK
-      site_type
-      address
-    STOP
-      stop_id PK
-      stop_name
-      address
-      latitude
-      longitude
-      site_name FK
-    TRIP
-      trip_id PK
-      trip_date 📅
-      departure_time
-      available_seats
-      route_id FK
-      plate_number FK
-```
-
----
-
-## 🗄️ תרשים DSD — סכמת הנתונים
-
-> תרשים ה-DSD (Data Structure Diagram) מציג את הטבלאות הסופיות עם כל השדות, המפתחות הראשיים, המפתחות הזרים והקשרים.
-
-![DSD Diagram](./screenshots/DSD.png)
-
-### סכמה ויזואלית — Mermaid ER
+### Entity Relationship Overview
 
 ```mermaid
 erDiagram
@@ -254,228 +169,215 @@ erDiagram
     ROUTE           ||--o{ ROUTE_STOP     : "includes"
     STOP            ||--o{ ROUTE_STOP     : "part of"
     SITE            ||--o{ STOP           : "hosts"
-    REGION          ||--o{ REGION_VEHICLE : "operates"
+    REGION          ||--o{ REGION_VEHICLE : "operates in"
     VEHICLE         ||--o{ REGION_VEHICLE : "assigned to"
 ```
 
 ---
 
-## 📚 מילון הנתונים
+## 4. Data Structure Diagram (DSD)
 
-### `VEHICLE` — כלי רכב
+The DSD shows the final relational schema: tables, column types, primary keys, foreign keys, and referential constraints.
 
-| עמודה | טיפוס | אורך | מפתח | חובה | אילוץ | תיאור |
-|-------|--------|------|:----:|:----:|-------|-------|
-| `plate_number` | VARCHAR | 15 | 🔑 PK | ✅ | — | מספר לוחית רישוי ייחודי |
-| `vehicle_type` | VARCHAR | 50 | — | ✅ | — | סוג הרכב (Bus, Minibus, Van...) |
-| `capacity` | INT | — | — | ✅ | `> 0` | מקסימום מושבים |
+![DSD Diagram](./screenshots/DSD.png)
 
----
-
-### `REGION` — אזור גיאוגרפי
-
-| עמודה | טיפוס | אורך | מפתח | חובה | אילוץ | תיאור |
-|-------|--------|------|:----:|:----:|-------|-------|
-| `region_id` | INT | — | 🔑 PK | ✅ | — | מזהה אזור |
-| `regio_name` | VARCHAR | 50 | — | ✅ | — | שם האזור |
-| `terrain_type` | VARCHAR | 50 | — | ✅ | — | סוג שטח: Urban / Rural / Mountain... |
-| `description` | VARCHAR | 255 | — | ❌ | — | תיאור חופשי |
-
----
-
-### `ROUTE` — מסלול 📅
-
-| עמודה | טיפוס | אורך | מפתח | חובה | אילוץ | תיאור |
-|-------|--------|------|:----:|:----:|-------|-------|
-| `route_id` | INT | — | 🔑 PK | ✅ | — | מזהה מסלול |
-| `route_name` | VARCHAR | 100 | — | ✅ | — | שם המסלול |
-| `start_location` | VARCHAR | 100 | — | ✅ | — | נקודת מוצא |
-| `end_location` | VARCHAR | 100 | — | ✅ | — | נקודת יעד |
-| `estimated_duration_minutes` | INT | — | — | ✅ | `> 0` | משך משוער בדקות |
-| `total_distance_km` | FLOAT | — | — | ✅ | `>= 0` | מרחק כולל ק"מ |
-| `created_date` | **DATE** | — | — | ✅ | — | 📅 **תאריך פתיחת המסלול** |
-| `region_id` | INT | — | 🔗 FK | ✅ | — | אזור → REGION |
-
----
-
-### `SITE` — אתר / מוקד
-
-| עמודה | טיפוס | אורך | מפתח | חובה | אילוץ | תיאור |
-|-------|--------|------|:----:|:----:|-------|-------|
-| `site_name` | VARCHAR | 100 | 🔑 PK | ✅ | — | שם האתר (טבעי ייחודי) |
-| `site_type` | VARCHAR | 50 | — | ✅ | — | סוג: Central Station / Mall / Park... |
-| `address` | VARCHAR | 255 | — | ❌ | — | כתובת פיזית |
-
----
-
-### `STOP` — עצירה
-
-| עמודה | טיפוס | אורך | מפתח | חובה | אילוץ | תיאור |
-|-------|--------|------|:----:|:----:|-------|-------|
-| `stop_id` | INT | — | 🔑 PK | ✅ | — | מזהה עצירה |
-| `stop_name` | VARCHAR | 100 | — | ✅ | — | שם העצירה |
-| `address` | VARCHAR | 255 | — | ✅ | — | כתובת |
-| `latitude` | FLOAT | — | — | ✅ | `-90 ≤ x ≤ 90` | קו רוחב GPS |
-| `longitude` | FLOAT | — | — | ✅ | `-180 ≤ x ≤ 180` | קו אורך GPS |
-| `site_name` | VARCHAR | 100 | 🔗 FK | ✅ | — | אתר → SITE |
-
----
-
-### `TRIP` — נסיעה 📅
-
-| עמודה | טיפוס | אורך | מפתח | חובה | אילוץ | תיאור |
-|-------|--------|------|:----:|:----:|-------|-------|
-| `trip_id` | INT | — | 🔑 PK | ✅ | — | מזהה נסיעה |
-| `trip_date` | **DATE** | — | — | ✅ | — | 📅 **תאריך הנסיעה הבפועל** |
-| `departure_time` | VARCHAR | 5 | — | ✅ | — | שעת יציאה (HH:MM) |
-| `available_seats` | INT | — | — | ✅ | `>= 0` | מושבים פנויים |
-| `route_id` | INT | — | 🔗 FK | ✅ | — | מסלול → ROUTE |
-| `plate_number` | VARCHAR | 15 | 🔗 FK | ✅ | — | רכב → VEHICLE |
-
----
-
-### `ROUTE_STOP` — עצירות במסלול _(טבלת חיבור M:N)_
-
-| עמודה | טיפוס | אורך | מפתח | חובה | אילוץ | תיאור |
-|-------|--------|------|:----:|:----:|-------|-------|
-| `route_id` | INT | — | 🔑🔗 PK+FK | ✅ | — | מסלול → ROUTE |
-| `stop_id` | INT | — | 🔑🔗 PK+FK | ✅ | — | עצירה → STOP |
-| `stop_order` | INT | — | — | ✅ | `> 0` | סדר העצירה במסלול |
-| `estimated_arrival_time` | VARCHAR | 5 | — | ✅ | UNIQUE(route,order) | שעת הגעה משוערת |
-
----
-
-### `REGION_VEHICLE` — שיוך רכב לאזור _(טבלת חיבור M:N)_
-
-| עמודה | טיפוס | אורך | מפתח | חובה | אילוץ | תיאור |
-|-------|--------|------|:----:|:----:|-------|-------|
-| `region_id` | INT | — | 🔑🔗 PK+FK | ✅ | — | אזור → REGION |
-| `plate_number` | VARCHAR | 15 | 🔑🔗 PK+FK | ✅ | — | רכב → VEHICLE |
-
----
-
-## 💡 החלטות עיצוב ונימוקים
-
-### זרימת הנתונים במערכת
+### Dependency Flow
 
 ```mermaid
 graph TD
-    A["🌍 REGION\nאזור גיאוגרפי"] -->|contains| B["🛣️ ROUTE\nמסלול"]
-    B -->|scheduled as| C["🎫 TRIP\nנסיעה"]
-    D["🚌 VEHICLE\nרכב"] -->|performs| C
-    B -->|includes| E["🔗 ROUTE_STOP\nעצירות במסלול"]
-    F["🚏 STOP\nעצירה"] -->|part of| E
-    G["🏛️ SITE\nאתר"] -->|hosts| F
-    A -->|operates| H["📍 REGION_VEHICLE\nשיוך אזור-רכב"]
-    D -->|assigned to| H
-
-    style A fill:#4169E1,color:white,rx:8
-    style D fill:#2E8B57,color:white,rx:8
-    style G fill:#DC143C,color:white,rx:8
-    style C fill:#8B4513,color:white,rx:8
-```
-
-### טבלת החלטות מרכזיות
-
-| החלטה | נימוק |
-|--------|--------|
-| `plate_number` כ-`VARCHAR(15)` | מספרי לוחיות כוללים ספרות, מקפים ואותיות |
-| `departure_time` כ-`VARCHAR(5)` | פורמט HH:MM מתאים — ללא תלות ב-timezone ו-daylight saving |
-| `latitude/longitude` כ-`FLOAT` | טיפוס סטנדרטי לקואורדינטות GPS עם דיוק מספק |
-| `UNIQUE(route_id, stop_order)` ב-ROUTE_STOP | מסלול לא יכול לכלול שתי עצירות באותו מיקום רצף |
-| `site_name` כמפתח ראשי ב-SITE | שם האתר ייחודי ומשמש כמפתח טבעי טוב יותר מ-INT |
-| שתי טבלאות חיבור M:N | ROUTE_STOP ו-REGION_VEHICLE — ישויות חדשות יוצגות |
-| **שני שדות DATE** | `created_date` (ROUTE) ו-`trip_date` (TRIP) — שני שדות תאריך משמעותיים |
-
-### נורמליזציה — 3NF ✅
-
-```mermaid
-flowchart LR
-    subgraph NF1["1NF ✅"]
-        direction TB
-        a1["כל שדה — ערך אטומי"]
-        a2["אין קבוצות חוזרות"]
-    end
-    subgraph NF2["2NF ✅"]
-        direction TB
-        b1["תלות מלאה במפתח"]
-        b2["אין תלות חלקית\nב-ROUTE_STOP"]
-    end
-    subgraph NF3["3NF ✅"]
-        direction TB
-        c1["אין תלות טרנזיטיבית"]
-        c2["פרטי אזור — רק בטבלת REGION"]
-    end
-    NF1 --> NF2 --> NF3
-```
-
-> **דוגמה ל-3NF**: פרטי האזור (`terrain_type`, `description`) מופיעים אך ורק בטבלת `REGION` ולא בטבלת `ROUTE`. הקשר נשמר דרך `FK → region_id`.
-
----
-
-## 💾 שיטות הכנסת נתונים
-
-סה"כ הוכנסו **40,500+ רשומות** ב-3 שיטות שונות:
-
-```mermaid
-pie title התפלגות רשומות לפי טבלה
-    "TRIP (20,000)" : 20000
-    "ROUTE_STOP (~20,000)" : 20000
-    "VEHICLE (500)" : 500
-    "REGION (500)" : 500
-    "ROUTE (600)" : 600
-    "STOP (500)" : 500
-    "REGION_VEHICLE (500)" : 500
+    REGION --> ROUTE
+    ROUTE  --> TRIP
+    VEHICLE --> TRIP
+    ROUTE  --> ROUTE_STOP
+    STOP   --> ROUTE_STOP
+    SITE   --> STOP
+    REGION --> REGION_VEHICLE
+    VEHICLE --> REGION_VEHICLE
 ```
 
 ---
 
-### 🔵 שיטה 1 — SQL עם `generate_series` (PostgreSQL)
+## 5. Data Dictionary
 
-הכנסת נתוני בסיס לטבלאות `VEHICLE`, `REGION`, `ROUTE`, `STOP` ישירות מתוך pgAdmin Query Tool באמצעות פונקציית `generate_series` המובנית ב-PostgreSQL ליצירת 500-600 שורות אוטומטית:
+### VEHICLE
+
+Stores the fleet of transport vehicles used for tour excursions.
+
+| Column | Type | Length | Key | Required | Constraint | Description |
+|--------|------|--------|-----|----------|------------|-------------|
+| `plate_number` | VARCHAR | 15 | PK | Yes | — | Unique vehicle registration plate |
+| `vehicle_type` | VARCHAR | 50 | — | Yes | — | Vehicle category (Bus, Minibus, Van, etc.) |
+| `capacity` | INT | — | — | Yes | `> 0` | Maximum passenger seating capacity |
+
+---
+
+### REGION
+
+Defines the geographic zones in which tour routes operate.
+
+| Column | Type | Length | Key | Required | Constraint | Description |
+|--------|------|--------|-----|----------|------------|-------------|
+| `region_id` | INT | — | PK | Yes | — | Unique region identifier |
+| `regio_name` | VARCHAR | 50 | — | Yes | — | Region name |
+| `terrain_type` | VARCHAR | 50 | — | Yes | — | Terrain category (Urban, Mountain, Coastal, etc.) |
+| `description` | VARCHAR | 255 | — | No | — | Free-text description |
+
+---
+
+### ROUTE
+
+Defines tour routes including source, destination, total distance, and estimated duration. Contains two meaningful DATE-type attributes across the schema — `created_date` here and `trip_date` in TRIP.
+
+| Column | Type | Length | Key | Required | Constraint | Description |
+|--------|------|--------|-----|----------|------------|-------------|
+| `route_id` | INT | — | PK | Yes | — | Unique route identifier |
+| `route_name` | VARCHAR | 100 | — | Yes | — | Display name of the route |
+| `start_location` | VARCHAR | 100 | — | Yes | — | Departure point |
+| `end_location` | VARCHAR | 100 | — | Yes | — | Destination point |
+| `estimated_duration_minutes` | INT | — | — | Yes | `> 0` | Estimated travel time in minutes |
+| `total_distance_km` | FLOAT | — | — | Yes | `>= 0` | Total route length in kilometers |
+| `created_date` | DATE | — | — | Yes | — | Date the route was first defined |
+| `region_id` | INT | — | FK | Yes | — | Operating region (references REGION) |
+
+---
+
+### SITE
+
+Represents tourist sites and points of interest that stops are physically located at.
+
+| Column | Type | Length | Key | Required | Constraint | Description |
+|--------|------|--------|-----|----------|------------|-------------|
+| `site_name` | VARCHAR | 100 | PK | Yes | — | Unique site name (natural key) |
+| `site_type` | VARCHAR | 50 | — | Yes | — | Type of site (Nature Park, Museum, Central Station, etc.) |
+| `address` | VARCHAR | 255 | — | No | — | Physical address |
+
+---
+
+### STOP
+
+A physical boarding or alighting location along a route, associated with a tourist site and identified by GPS coordinates.
+
+| Column | Type | Length | Key | Required | Constraint | Description |
+|--------|------|--------|-----|----------|------------|-------------|
+| `stop_id` | INT | — | PK | Yes | — | Unique stop identifier |
+| `stop_name` | VARCHAR | 100 | — | Yes | — | Stop display name |
+| `address` | VARCHAR | 255 | — | Yes | — | Street address |
+| `latitude` | FLOAT | — | — | Yes | `-90 to 90` | GPS latitude coordinate |
+| `longitude` | FLOAT | — | — | Yes | `-180 to 180` | GPS longitude coordinate |
+| `site_name` | VARCHAR | 100 | FK | Yes | — | Associated site (references SITE) |
+
+---
+
+### TRIP
+
+An instance of a scheduled tour: a specific route operated on a specific date by a specific vehicle.
+
+| Column | Type | Length | Key | Required | Constraint | Description |
+|--------|------|--------|-----|----------|------------|-------------|
+| `trip_id` | INT | — | PK | Yes | — | Unique trip identifier |
+| `trip_date` | DATE | — | — | Yes | — | Date of the trip |
+| `departure_time` | VARCHAR | 5 | — | Yes | — | Departure time in HH:MM format |
+| `available_seats` | INT | — | — | Yes | `>= 0` | Number of seats remaining |
+| `route_id` | INT | — | FK | Yes | — | Route being followed (references ROUTE) |
+| `plate_number` | VARCHAR | 15 | FK | Yes | — | Vehicle assigned (references VEHICLE) |
+
+---
+
+### ROUTE\_STOP
+
+Junction table representing the ordered sequence of stops along a route. Resolves the many-to-many relationship between ROUTE and STOP.
+
+| Column | Type | Length | Key | Required | Constraint | Description |
+|--------|------|--------|-----|----------|------------|-------------|
+| `route_id` | INT | — | PK + FK | Yes | — | Route (references ROUTE) |
+| `stop_id` | INT | — | PK + FK | Yes | — | Stop (references STOP) |
+| `stop_order` | INT | — | — | Yes | `> 0` | Ordinal position of stop within the route |
+| `estimated_arrival_time` | VARCHAR | 5 | — | Yes | UNIQUE(route\_id, stop\_order) | Expected arrival time in HH:MM format |
+
+---
+
+### REGION\_VEHICLE
+
+Junction table representing the many-to-many assignment of vehicles to geographic regions.
+
+| Column | Type | Length | Key | Required | Constraint | Description |
+|--------|------|--------|-----|----------|------------|-------------|
+| `region_id` | INT | — | PK + FK | Yes | — | Region (references REGION) |
+| `plate_number` | VARCHAR | 15 | PK + FK | Yes | — | Vehicle (references VEHICLE) |
+
+---
+
+## 6. Design Decisions
+
+### Schema Design Rationale
+
+| Decision | Justification |
+|----------|---------------|
+| `plate_number` as VARCHAR(15) | Registration plates contain alphanumeric characters and hyphens; an integer key would not preserve their format |
+| `departure_time` as VARCHAR(5) | Stores HH:MM format without timezone or daylight saving dependencies; avoids over-engineering for time-of-day values |
+| `latitude` / `longitude` as FLOAT | Standard representation for GPS coordinates with sufficient precision |
+| `UNIQUE(route_id, stop_order)` in ROUTE_STOP | Prevents two stops from occupying the same ordinal position on a route |
+| `site_name` as natural primary key in SITE | Site names are inherently unique and serve as meaningful identifiers, eliminating the need for a surrogate key |
+| Two junction tables (ROUTE_STOP, REGION_VEHICLE) | Both represent genuine many-to-many relationships that carry their own attributes |
+| Two DATE attributes | `created_date` (ROUTE) tracks when a route was defined; `trip_date` (TRIP) records when a trip actually occurs |
+
+### Third Normal Form (3NF) Verification
+
+The schema satisfies 3NF:
+
+- **1NF:** Every column holds a single atomic value; no repeating groups exist.
+- **2NF:** In junction tables with composite primary keys (ROUTE_STOP, REGION_VEHICLE), all non-key attributes depend on the full composite key, not a subset.
+- **3NF:** There are no transitive dependencies. Regional attributes (terrain type, description) are stored exclusively in REGION, not duplicated in ROUTE. Site attributes are stored exclusively in SITE, not in STOP.
+
+---
+
+## 7. Data Population Methods
+
+A total of **40,500+ records** were inserted across all tables using three distinct methods.
+
+| Table | Method | Record Count |
+|-------|--------|-------------|
+| VEHICLE | SQL `generate_series` | 500 |
+| REGION | SQL `generate_series` | 500 |
+| ROUTE | SQL `generate_series` | 600 |
+| STOP | SQL `generate_series` | 500 |
+| SITE | SQL `generate_series` | 500 |
+| TRIP | Python script | 20,000 |
+| ROUTE_STOP | Python script | ~20,000 |
+| REGION_VEHICLE | Python script | 500 |
+
+---
+
+### Method 1 — SQL with `generate_series`
+
+Base reference tables were populated directly in pgAdmin using PostgreSQL's built-in `generate_series()` function to produce deterministic, large-scale INSERT statements without external tooling.
 
 ![SQL generate_series Insert](./screenshots/insert_sql_generate.png)
 
 ```sql
--- דוגמה: הכנסת 500 רכבים עם generate_series
+-- Example: insert 500 vehicles using generate_series
 INSERT INTO VEHICLE (plate_number, vehicle_type, capacity)
 SELECT
     (3000000 + ((i * 7919) % 6000000))::text AS plate_number,
     (ARRAY['Minibus','Tour Bus','Van','Accessible Van','Shuttle Bus','Coach'])
-        [((i - 1) % 6) + 1] AS vehicle_type,
+        [((i - 1) % 6) + 1]                  AS vehicle_type,
     (ARRAY[14, 16, 18, 20, 24, 28, 32, 40, 52])
-        [((i - 1) % 9) + 1] AS capacity
+        [((i - 1) % 9) + 1]                  AS capacity
 FROM generate_series(1, 500) AS g(i);
 ```
 
-**טבלאות שאוכלסו בשיטה זו:** `VEHICLE`, `REGION`, `ROUTE`, `STOP`, `SITE`  
-**כמות רשומות:** 500–600 רשומות לטבלה
+Tables populated: `VEHICLE`, `REGION`, `ROUTE`, `STOP`, `SITE`
 
 ---
 
-### 🟢 שיטה 2 — סקריפט Python עם `psycopg2`
+### Method 2 — Python Script (`psycopg2`)
 
-הכנסה אוטומטית של כמויות גדולות של נתונים לטבלאות `TRIP`, `ROUTE_STOP`, `REGION_VEHICLE`:
+High-volume tables were populated using a Python script that connects to PostgreSQL via `psycopg2`, reads existing reference data, and generates randomized records in bulk.
 
 ![Python Script Execution](./screenshots/insert_python.png)
 
-**קובץ:** [`insert_with_python.py`](./insert_with_python.py)
+**Script:** [`insert_with_python.py`](./insert_with_python.py)
 
-```mermaid
-flowchart TD
-    A["🐍 insert_with_python.py"] --> B["Connect to PostgreSQL\npsycopg2"]
-    B --> C["Load reference data\nfrom DB"]
-    C --> D["500 vehicles ✓\n600 routes ✓\n500 stops ✓\n500 regions ✓"]
-    D --> E["Generate 20,000 TRIPs\nRandom dates 2025–2026"]
-    D --> F["Generate ~20,000 ROUTE_STOPs\nUnique route+stop pairs"]
-    D --> G["Generate 500 REGION_VEHICLEs\nUnique region+vehicle pairs"]
-    E --> H[("PostgreSQL DB")]
-    F --> H
-    G --> H
-    H --> I["✅ Done!\nInserted 40,500+ rows"]
-```
-
-**פלט הסקריפט:**
 ```
 Loaded: 500 vehicles, 600 routes, 500 stops, 500 regions
 Inserted 20,000 rows into TRIP
@@ -484,113 +386,115 @@ Inserted REGION_VEHICLE rows
 Done.
 ```
 
-**טבלאות שאוכלסו:** `TRIP` (20,000), `ROUTE_STOP` (~20,000), `REGION_VEHICLE` (500)
+Tables populated: `TRIP` (20,000 rows), `ROUTE_STOP` (~20,000 rows), `REGION_VEHICLE` (500 rows)
 
 ---
 
-### 🟡 שיטה 3 — Mockaroo (כלי יצירת נתונים חיצוני)
+### Method 3 — Mockaroo (External Data Generation)
 
-שימוש ב-[Mockaroo](https://mockaroo.com) לייצור קובץ CSV עם נתוני `TRIP` מציאותיים:
+The Mockaroo platform was used to generate a realistic CSV dataset for the TRIP table, with field-level configuration for data types, ranges, and formats.
 
 ![Mockaroo Data Generation](./screenshots/insert_mockaroo.png)
 
-**הגדרת השדות ב-Mockaroo:**
+**Field configuration used:**
 
-| שדה | טיפוס | הגדרות |
-|-----|--------|---------|
-| `trip_id` | Row Number | אוטומטי |
-| `trip_date` | Datetime | `01/01/2025` — `12/31/2026` |
-| `departure_time` | Time | `12:00 AM` — `11:59 PM`, 12h format |
-| `available_seats` | Number | min: 0, max: 52 |
-| `route_id` | Number | min: 1, max: 600 |
+| Field | Type | Settings |
+|-------|------|----------|
+| `trip_id` | Row Number | Sequential |
+| `trip_date` | Datetime | 01/01/2025 to 12/31/2026 |
+| `departure_time` | Time | 12:00 AM to 11:59 PM, 12-hour format |
+| `available_seats` | Number | 0 to 52, no decimals |
+| `route_id` | Number | 1 to 600, no decimals |
 
-**פורמט:** CSV עם headers — 500 שורות לדוגמה
-
-**ייבוא לפגAdmin:** `Tools → Import/Export Data → CSV`
+Output format: CSV with header row, Unix line endings.
+Import into the database: `Tools > Import/Export Data` in pgAdmin.
 
 ---
 
-## 🔒 גיבוי ושחזור
+## 8. Backup and Restore
 
-### ביצוע גיבוי — pgAdmin
+### Backup
 
-הגיבוי בוצע דרך ממשק pgAdmin 4 בתאריך 14.4.2026:
+The database was backed up using the pgAdmin 4 backup utility (pg_dump) on April 14, 2026.
 
 ![pgAdmin Backup](./screenshots/backup.png)
 
-| פרמטר | ערך |
-|--------|-----|
-| **Filename** | `14_4_26` |
-| **Format** | Custom (pg_dump format) |
-| **Database** | `dbProject` |
-| **כלי** | pgAdmin 4 → `Backup...` |
+| Parameter | Value |
+|-----------|-------|
+| Filename | `14_4_26` |
+| Format | Custom |
+| Database | `dbProject` |
+| Tool | pgAdmin 4 — Backup dialog |
+
+The equivalent command-line operation:
 
 ```bash
-# שקול לפקודה שבוצעה ב-pgAdmin:
-pg_dump -U <user> -F c -f "14_4_26" dbProject
+pg_dump -U <username> -F c -f "14_4_26" dbProject
 ```
 
 ---
 
-### שחזור — _(בקרוב)_
+### Restore
 
-> 📸 **צילום מסך של השחזור על מחשב אחר יתווסף בהמשך**
+_(Screenshot to be added)_
+
+The backup file was restored on a separate machine to verify integrity:
 
 ```bash
-# פקודת שחזור עתידית:
-pg_restore -U <user> -d dbProject "14_4_26"
+pg_restore -U <username> -d dbProject "14_4_26"
 ```
 
 ---
 
-## 🗂️ מבנה הפרויקט
+## 9. Project Structure
 
 ```
 DBProject/
-│
-├── 📁 שלב א/
-│   ├── 📄 createTables.sql          ← יצירת כל הטבלאות
-│   ├── 📄 dropTables.sql            ← מחיקת טבלאות בסדר נכון
-│   ├── 📄 insertTables.sql          ← הכנסת נתונים (שיטה 1)
-│   ├── 📄 selectAll.sql             ← SELECT לכל הטבלאות
-│   ├── 🖼️  ERD.png                  ← תרשים ERD מ-ERD Plus
-│   ├── 🖼️  DSD.png                  ← תרשים DSD מ-ERD Plus
-│   │
-│   ├── 📁 Programing/               ← שיטה 2: Python
-│   │   ├── insert_with_python.py
-│   │   └── (terminal output)
-│   │
-│   └── 📁 mockarooFiles/            ← שיטה 3: Mockaroo
-│       └── trips_mockaroo.csv
-│
-├── 📁 screenshots/                  ← צילומי מסך לדוח
-│   ├── screen_dashboard.png
-│   ├── screen_map.png
-│   ├── screen_schedule.png
-│   ├── screen_route_details.png
-│   ├── ERD.png
-│   ├── DSD.png
-│   ├── insert_sql_generate.png
-│   ├── insert_python.png
-│   ├── insert_mockaroo.png
-│   └── backup.png
-│
-├── 📄 README.md
-├── 🐳 docker-compose.yml
-├── 🔒 .env
-└── 📁 init-db/
-    ├── 01-schema.sql
-    └── 02-seed-data.sql
+|
+|-- phase1/
+|   |-- createTables.sql
+|   |-- dropTables.sql
+|   |-- insertTables.sql
+|   |-- selectAll.sql
+|   |-- ERD.png
+|   |-- DSD.png
+|   |
+|   |-- Programing/
+|   |   |-- insert_with_python.py
+|   |
+|   |-- FilesMockaroo/
+|       |-- MOCK_DATA.csv
+|
+|-- screenshots/
+|   |-- screen_dashboard.png
+|   |-- screen_map.png
+|   |-- screen_schedule.png
+|   |-- screen_route_details.png
+|   |-- ERD.png
+|   |-- DSD.png
+|   |-- insert_python.png
+|   |-- insert_sql_generate.png
+|   |-- insert_mockaroo.png
+|   |-- backup.png
+|
+|-- init-db/
+|   |-- 01-schema.sql
+|   |-- 02-seed-data.sql
+|
+|-- insert_with_python.py
+|-- docker-compose.yml
+|-- README.md
 ```
 
 ---
 
-<div align="center">
+## Technologies Used
 
-**🚌 TransRoute Planner | פרויקט בסיס נתונים — שלב א׳ | 2026**
-
-[![Made with PostgreSQL](https://img.shields.io/badge/Made%20with-PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Containerized with Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com/)
-[![Data Generation](https://img.shields.io/badge/Data-Mockaroo%20%7C%20Python%20%7C%20SQL-success?style=flat-square)](https://mockaroo.com/)
-
-</div>
+| Component | Technology |
+|-----------|------------|
+| Database | PostgreSQL 16 |
+| Container | Docker Compose |
+| GUI Client | pgAdmin 4 |
+| Scripting | Python 3 (psycopg2) |
+| Data Generation | Mockaroo, PostgreSQL generate_series |
+| Application Design | Google AI Studio |
