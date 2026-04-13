@@ -57,7 +57,7 @@ The system supports the following operations:
 ## 2. Application Screens
 
 The application interface was designed using **Google AI Studio**.
-Link: _(insert link here)_
+Link: [https://ai.studio/apps/72d023cf-62c3-4e57-b361-48b2a41a6f65](https://ai.studio/apps/72d023cf-62c3-4e57-b361-48b2a41a6f65)
 
 ---
 
@@ -152,15 +152,15 @@ erDiagram
     }
 
     ROUTE_STOP {
-        int         route_id               PK-FK
-        int         stop_id                PK-FK
+        int         route_id               PK
+        int         stop_id                PK
         int         stop_order
         varchar(5)  estimated_arrival_time
     }
 
     REGION_VEHICLE {
-        int          region_id     PK-FK
-        varchar(15)  plate_number  PK-FK
+        int          region_id     PK
+        varchar(15)  plate_number  PK
     }
 
     REGION          ||--o{ ROUTE          : "contains"
@@ -498,3 +498,11 @@ DBProject/
 | Scripting | Python 3 (psycopg2) |
 | Data Generation | Mockaroo, PostgreSQL generate_series |
 | Application Design | Google AI Studio |
+
+---
+
+## Live Application
+
+The prototype application built with Google AI Studio is available at the following link:
+
+[https://ai.studio/apps/72d023cf-62c3-4e57-b361-48b2a41a6f65](https://ai.studio/apps/72d023cf-62c3-4e57-b361-48b2a41a6f65)
