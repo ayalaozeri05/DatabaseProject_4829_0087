@@ -1,7 +1,6 @@
 # Tour Route Planning System — Database Project, Phase A
 
-**Submitters:** [Name 1] · [Name 2]  
-**ID Numbers:** [ID 1] · [ID 2]  
+**Submitters:** [Efrat Wilinger] · [Ayala Ozeri]  
 **Submission Date:** April 2026
 
 ---
