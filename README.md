@@ -436,7 +436,17 @@ pg_dump -U <username> -F c -f "14_4_26" dbProject
 
 ### Restore
 
-_(Screenshot to be added)_
+The backup file was restored on a separate machine to verify integrity.
+The restore was performed using pgAdmin 4's **Restore** dialog with the same backup file (`14_4_26`) in Custom or tar format.
+
+![pgAdmin Restore](./screenshots/Screenshot%202026-04-15%20014318.png)
+
+| Parameter | Value |
+|-----------|-------|
+| Filename | `14_4_26` |
+| Format | Custom or tar |
+| Database | `db` |
+| Tool | pgAdmin 4 — Restore dialog |
 
 The backup file was restored on a separate machine to verify integrity:
 
@@ -476,6 +486,7 @@ DBProject/
 |   |-- insert_sql_generate.png
 |   |-- insert_mockaroo.png
 |   |-- backup.png
+|   |-- Screenshot 2026-04-15 014318.png   ← restore dialog
 |
 |-- init-db/
 |   |-- 01-schema.sql
