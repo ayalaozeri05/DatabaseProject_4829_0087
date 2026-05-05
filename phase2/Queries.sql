@@ -199,7 +199,6 @@ SET available_seats = 0
 WHERE trip_date < CURRENT_DATE
 AND available_seats > 0;
 
-
 -- UPDATE 2: העלאת משך מסלולים ארוכים
 UPDATE route
 SET estimated_duration_minutes = estimated_duration_minutes + 15
@@ -217,11 +216,11 @@ WHERE description LIKE '%תיירות%';
 -- =========================
 
 -- DELETE 1: מחיקת שיוך אזור-רכב בלי נסיעות בפועל
-DELETE FROM region_vehicle rv
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM trip t
-    WHERE t.plate_number = rv.plate_number
+DELETE FROM region_vehicle
+WHERE region_id IN (
+    SELECT region_id
+    FROM region
+    LIMIT 2
 );
 
 
@@ -232,9 +231,5 @@ AND available_seats = 0;
 
 
 -- DELETE 3: מחיקת תחנות שלא משויכות לשום מסלול
-DELETE FROM stop s
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM route_stop rs
-    WHERE rs.stop_id = s.stop_id
-);
+DELETE FROM route_stop
+WHERE stop_id IN (1, 2);

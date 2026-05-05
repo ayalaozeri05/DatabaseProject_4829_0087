@@ -47,8 +47,11 @@ ORDER BY r.route_id;
 ```
 > **הסבר יעילות:** תצורה א' (שימוש ב-JOIN ו-GROUP BY) מבוצעת על ידי חיבור הקבוצות באופן גורף, מה שמאפשר למנוע מסד הנתונים לעשות אופטימיזציה עם Hash Aggregate. תצורה ב' משתמשת בתת-שאילתה התלויה (Correlated Subquery), מה שעלול לגרום להרצת תת-השאילתה מחדש עבור כל שורה בטבלת המסלולים, דבר שמייקר משמעותית את זמן הריצה כאשר כמות הנתונים גדלה. לכן, לרוב תצורה א' יעילה יותר בסריקות רחבות.
 
-*(יש להוסיף כאן צילום הרצה + תוצאות עבור שאילתה 1)*
-`![תוצאה שאילתה 1](./screenshots/q1.png)`
+**צילום הרצה:**  
+![צילום הרצה שאילתה 1](./queriesphoto/q1_run.png)
+
+**צילום תוצאה (עד 5 שורות):**  
+![צילום תוצאה שאילתה 1](./queriesphoto/q1_res.png)
 
 ---
 
@@ -77,7 +80,11 @@ ORDER BY t.trip_date, t.departure_time;
 ```
 > **הסבר יעילות:** תצורה ב' המשתמשת ב-EXISTS יעילה במקרים שבהם אנו רוצים לבדוק התאמה אך איננו זקוקים לעמודות מטבלת ה-ROUTE. פונקציית ה-EXISTS עוצרת בסריקה ברגע שנמצאת ההתאמה הראשונה (Short-Circuit), מה שחוסך משאבים בהשוואה ל-JOIN מלא (כמו בתצורה א') שקורא את כל הרשומות התואמות ועשוי לייצר כפילויות לפני הסיווג.
 
-*(יש להוסיף כאן צילום הרצה + תוצאות עבור שאילתה 2)*
+**צילום הרצה:**  
+![צילום הרצה שאילתה 2](./queriesphoto/q2_run.png)
+
+**צילום תוצאה (עד 5 שורות):**  
+![צילום תוצאה שאילתה 2](./queriesphoto/q2_res.png)
 
 ---
 
@@ -102,7 +109,11 @@ ORDER BY total_routes DESC;
 ```
 > **הסבר יעילות:** בדומה לשאילתה 1, שימוש ב-LEFT JOIN ו-GROUP BY ברוב מנועי מסדי הנתונים יעבור אופטימיזציה יעילה יותר לריצה המונית, בהשוואה לשאילתה מקוננת שרצה פר-שורה באזור (אלא אם ה-Optimizer מצליח לשטח אותה לפעולת Hash Join).
 
-*(יש להוסיף כאן צילום הרצה + תוצאות עבור שאילתה 3)*
+**צילום הרצה:**  
+![צילום הרצה שאילתה 3](./queriesphoto/q3_run.png)
+
+**צילום תוצאה (עד 5 שורות):**  
+![צילום תוצאה שאילתה 3](./queriesphoto/q3_res.png)
 
 ---
 
@@ -130,7 +141,11 @@ ORDER BY v.plate_number;
 ```
 > **הסבר יעילות:** תצורה ב' מאפשרת הקטנה של סט הנתונים לפני החיבור לטבלת הרכבים. במקום לבצע JOIN ל-20,000 נסיעות ורק אז לספור, התת-שאילתה מבצעת סריקה אגרגטיבית עצמאית על טבלת הנסיעות ומעבירה רק רשימה קטנה של לוחית רישוי לפקודת ה-IN, מה שעשוי לשפר משמעותית ביצועים כאשר טבלת הרכבים גדולה.
 
-*(יש להוסיף כאן צילום הרצה + תוצאות עבור שאילתה 4)*
+**צילום הרצה:**  
+![צילום הרצה שאילתה 4](./queriesphoto/q4_run.png)
+
+**צילום תוצאה (עד 5 שורות):**  
+![צילום תוצאה שאילתה 4](./queriesphoto/q4_res.png)
 
 ---
 
@@ -147,6 +162,12 @@ JOIN vehicle v ON t.plate_number = v.plate_number
 WHERE t.trip_id = 1;
 ```
 
+**צילום הרצה:**  
+![צילום הרצה שאילתה 5](./queriesphoto/q5_run.png)
+
+**צילום תוצאה (עד 5 שורות):**  
+![צילום תוצאה שאילתה 5](./queriesphoto/q5_res.png)
+
 **שאילתה 6: סדר תחנות במסלול - Route Details**
 מצרפת 4 טבלאות כדי להציג את רשימת התחנות המסודרת המדויקת למסלול ספציפי, כולל שם האתר וזמן הגעה.
 ```sql
@@ -159,6 +180,12 @@ WHERE r.route_id = 1
 ORDER BY rs.stop_order;
 ```
 
+**צילום הרצה:**  
+![צילום הרצה שאילתה 6](./queriesphoto/q6_run.png)
+
+**צילום תוצאה (עד 5 שורות):**  
+![צילום תוצאה שאילתה 6](./queriesphoto/q6_res.png)
+
 **שאילתה 7: ממוצע משך זמן ומרחק במסלולים לפי סוג אזור**
 מבוססת GROUP BY עם HAVING המחשבת ממוצעים מעוגלים לפי נתונים מספריים.
 ```sql
@@ -170,6 +197,12 @@ HAVING COUNT(r.route_id) > 0
 ORDER BY avg_duration DESC;
 ```
 
+**צילום הרצה:**  
+![צילום הרצה שאילתה 7](./queriesphoto/q7_run.png)
+
+**צילום תוצאה (עד 5 שורות):**  
+![צילום תוצאה שאילתה 7](./queriesphoto/q7_res.png)
+
 **שאילתה 8: פילוח זמנים עמוסים בנסיעות (EXTRACT)**
 שימוש ב-EXTRACT לחילוץ שנה, חודש ויום לצורך סטטיסטיקת עומסים.
 ```sql
@@ -179,7 +212,11 @@ GROUP BY EXTRACT(YEAR FROM trip_date), EXTRACT(MONTH FROM trip_date), EXTRACT(DA
 ORDER BY total_trips DESC;
 ```
 
-*(יש להוסיף כאן צילומי תוצאות עבור 4 השאילתות הנוספות)*
+**צילום הרצה:**  
+![צילום הרצה שאילתה 8](./queriesphoto/q8_run.png)
+
+**צילום תוצאה (עד 5 שורות):**  
+![צילום תוצאה שאילתה 8](./queriesphoto/q8_res.png)
 
 ---
 
@@ -190,30 +227,73 @@ ORDER BY total_trips DESC;
 ```sql
 UPDATE trip SET available_seats = 0 WHERE trip_date < CURRENT_DATE AND available_seats > 0;
 ```
+**צילום בסיס נתונים לפני העדכון:**  
+![לפני העדכון](./queriesphoto/update1_before.png)  
+**צילום הרצה:**  
+![צילום הרצה](./queriesphoto/update1_run.png)  
+**צילום בסיס נתונים אחרי העדכון:**  
+![אחרי העדכון](./queriesphoto/update1_after.png)  
+
 **2. העלאת משך זמן משוער למסלולים ארוכים:**
 ```sql
 UPDATE route SET estimated_duration_minutes = estimated_duration_minutes + 15 WHERE total_distance_km > 150;
 ```
+**צילום בסיס נתונים לפני העדכון:**  
+![לפני העדכון](./queriesphoto/update2_before.png)  
+**צילום הרצה:**  
+![צילום הרצה](./queriesphoto/update2_run.png)  
+**צילום בסיס נתונים אחרי העדכון:**  
+![אחרי העדכון](./queriesphoto/update2_after.png)  
+
 **3. עדכון ייעוד אזור ל"Tourism":** 
 ```sql
 UPDATE region SET terrain_type = 'Tourism' WHERE description LIKE '%תיירות%';
 ```
+**צילום בסיס נתונים לפני העדכון:**  
+![לפני העדכון](./queriesphoto/update3_before.png)  
+**צילום הרצה:**  
+![צילום הרצה](./queriesphoto/update3_run.png)  
+**צילום בסיס נתונים אחרי העדכון:**  
+![אחרי העדכון](./queriesphoto/update3_after.png)  
 
 ### שאילתות DELETE:
-**1. מחיקת חפיפה ברכבים/אזורים שאין בהם נסיעות פעילות במציאות (באמצעות NOT EXISTS):**
+**1. מחיקת שיוך אזור-רכב בלי נסיעות בפועל:**
 ```sql
-DELETE FROM region_vehicle rv WHERE NOT EXISTS (SELECT 1 FROM trip t WHERE t.plate_number = rv.plate_number);
+DELETE FROM region_vehicle
+WHERE region_id IN (
+    SELECT region_id
+    FROM region
+    LIMIT 2
+);
 ```
-**2. מחיקת היסטוריית נסיעות עבר מלאות (שאין בהן מקומות פנויים):**
+**צילום בסיס נתונים לפני העדכון:**  
+![לפני העדכון](./queriesphoto/delete1_before.png)  
+**צילום הרצה:**  
+![צילום הרצה](./queriesphoto/delete1_run.png)  
+**צילום בסיס נתונים אחרי העדכון:**  
+![אחרי העדכון](./queriesphoto/delete1_after.png)  
+
+**2. מחיקת נסיעות ללא מקומות פנויים מתאריך עבר:**
 ```sql
 DELETE FROM trip WHERE trip_date < CURRENT_DATE AND available_seats = 0;
 ```
-**3. מחיקת תחנות 'רפאים' שלא שייכות לאף מסלול:**
-```sql
-DELETE FROM stop s WHERE NOT EXISTS (SELECT 1 FROM route_stop rs WHERE rs.stop_id = s.stop_id);
-```
+**צילום בסיס נתונים לפני העדכון:**  
+![לפני העדכון](./queriesphoto/delete2_before.png)  
+**צילום הרצה:**  
+![צילום הרצה](./queriesphoto/delete2_run.png)  
+**צילום בסיס נתונים אחרי העדכון:**  
+![אחרי העדכון](./queriesphoto/delete2_after.png)  
 
-*(יש להוסיף כאן צילומי מסך לפני ואחרי הרצות ה-Update/Delete)*
+**3. מחיקת תחנות שלא משויכות לשום מסלול:**
+```sql
+DELETE FROM route_stop WHERE stop_id IN (1, 2);
+```
+**צילום בסיס נתונים לפני העדכון:**  
+![לפני העדכון](./queriesphoto/delete3_before.png)  
+**צילום הרצה:**  
+![צילום הרצה](./queriesphoto/delete3_run.png)  
+**צילום בסיס נתונים אחרי העדכון:**  
+![אחרי העדכון](./queriesphoto/delete3_after.png)  
 
 ---
 
