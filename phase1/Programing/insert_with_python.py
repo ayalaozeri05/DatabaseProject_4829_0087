@@ -55,7 +55,7 @@ end_date   = date(2026, 12, 31)
 days_range = (end_date - start_date).days
 
 trip_rows = []
-for trip_id in range(1, 20001):
+for trip_id in range(20002, 20101):
     trip_rows.append((
         trip_id,
         start_date + timedelta(days=random.randint(0, days_range)),
@@ -79,7 +79,7 @@ print("Inserted 20,000 rows into TRIP")
 #    Constraints: PK (route_id, stop_id), UNIQUE (route_id, stop_order)
 # -------------------------------------------------------
 route_stop_rows = set()
-while len(route_stop_rows) < 20000:
+while len(route_stop_rows) < 100:
     route_id   = random.choice(route_ids)
     stop_id    = random.choice(stop_ids)
     stop_order = random.randint(1, 20)
