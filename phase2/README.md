@@ -294,32 +294,41 @@ DELETE FROM route_stop WHERE stop_id IN (1, 2);
 **דוח מוטיבציה:** הוספת האילוצים נועדה לשמור על שלמות הנתונים (Data Integrity). במערכות מורכבות שמקבלות מידע ממספר גורמים, ייתכנו שגיאות הקלדה שמובילות להזנת מידע שלא ייתכן במציאות. הגבלת הנתונים ברמת מסד הנתונים מונעת מבאגים קריטיים להיווצר ומונעת קריסות של חזית המערכת.
 
 **אילוץ 1: קיבולת רכב חייבת להיות חיובית**
-מונע הזנת רכבים עם מספר מושבים שלילי.
+**תיאור השינוי:** מונע הזנת רכבים עם מספר מושבים שלילי.
 ```sql
 ALTER TABLE vehicle ADD CONSTRAINT chk_vehicle_capacity_positive CHECK (capacity > 0);
--- בדיקת שגיאה: (נסיון להכניס מינוס 5)
+```
+**בדיקת האילוץ (ניסיון להכניס מינוס 5):**
+```sql
 INSERT INTO vehicle (plate_number, vehicle_type, capacity) VALUES ('9999999', 'Bus', -5);
 ```
+**צילום לפני (יצירת האילוץ) ואחרי (שגיאת הרצה בסתירה לאילוץ):**
+![אילוץ 1 תמונה 1](./constraintsphoto/Screenshot%202026-05-05%20203408.png)
+![אילוץ 1 תמונה 2](./constraintsphoto/Screenshot%202026-05-05%20203437.png)
 
 **אילוץ 2: כמות מושבים פנויים אינה יכולה להיות שלילית**
-כדי למנוע "אובר-בוקינג" בנסיעה (קריטי למערכת תזמון).
+**תיאור השינוי:** כדי למנוע "אובר-בוקינג" בנסיעה (קריטי למערכת תזמון).
 ```sql
 ALTER TABLE trip ADD CONSTRAINT chk_trip_available_seats_non_negative CHECK (available_seats >= 0);
--- בדיקת שגיאה:
+```
+**בדיקת האילוץ (ניסיון להכניס מושבים שליליים):**
+```sql
 INSERT INTO trip (trip_id, trip_date, departure_time, available_seats, route_id, plate_number) VALUES (999999, '2025-05-01', '08:00', -3, 1, '3007919');
 ```
+**צילום לפני (יצירת האילוץ) ואחרי (שגיאת הרצה בסתירה לאילוץ):**
+![אילוץ 2 תמונה 1](./constraintsphoto/Screenshot%202026-05-05%20204112.png)
+![אילוץ 2 תמונה 2](./constraintsphoto/Screenshot%202026-05-05%20204137.png)
 
 **אילוץ 3: אורך מסלול חייב להיות חיובי**
-מסלול חייב לכלול מרחק ממשי מעל 0.
+**תיאור השינוי:** מסלול חייב לכלול מרחק ממשי מעל 0.
 ```sql
 ALTER TABLE route ADD CONSTRAINT chk_route_distance_positive CHECK (total_distance_km > 0);
 ```
-
-**תמונות הדגמה לאילוצים:**
-![אילוץ 1 תמונה 1](./constraintsphoto/Screenshot%202026-05-05%20203408.png)
-![אילוץ 1 תמונה 2](./constraintsphoto/Screenshot%202026-05-05%20203437.png)
-![אילוץ 2 תמונה 1](./constraintsphoto/Screenshot%202026-05-05%20204112.png)
-![אילוץ 2 תמונה 2](./constraintsphoto/Screenshot%202026-05-05%20204137.png)
+**בדיקת האילוץ (ניסיון להכניס מרחק שלילי):**
+```sql
+INSERT INTO route (route_id, route_name, start_location, end_location, estimated_duration_minutes, total_distance_km, created_date, region_id) VALUES (999999, 'Invalid Route', 'A', 'B', 60, -10, '2025-01-01', 1);
+```
+**צילום לפני (יצירת האילוץ) ואחרי (שגיאת הרצה בסתירה לאילוץ):**
 ![אילוץ 3 תמונה 1](./constraintsphoto/Screenshot%202026-05-05%20204156.png)
 ![אילוץ 3 תמונה 2](./constraintsphoto/Screenshot%202026-05-05%20204219.png)
 
@@ -330,74 +339,127 @@ ALTER TABLE route ADD CONSTRAINT chk_route_distance_positive CHECK (total_distan
 השתמשנו בעסקאות (Transactions) בבלוק של `BEGIN;` על מנת לבדוק עדכונים ולבטל אותם במידת הצורך.
 
 **תהליך ROLLBACK (ביטול פעולה על בסיס הנתונים):**
-```sql
-BEGIN;
-UPDATE trip SET available_seats = available_seats - 1 WHERE trip_id = 1;
--- *הדפסת הנתונים לפני ואחרי (1 מושב פחות)*
-ROLLBACK;
--- *הדפסת הנתונים אחרי החזרה - הערך חזר לקדמותו.*
-```
+דוגמה להורדת מספר המושבים הפנויים בנסיעה וביטול הפעולה.
+1. מצב בסיס הנתונים **לפני** תחילת העסקה:
+![מצב לפני Rollback](./rollbackcommotphoto/Screenshot%202026-05-05%20205354.png)
+2. הרצת העדכון בתוך הבלוק (`BEGIN; UPDATE...`):
+![הרצת פקודת העדכון](./rollbackcommotphoto/Screenshot%202026-05-05%20205426.png)
+3. מצב בסיס הנתונים **בזמן העסקה** (לפני הביטול):
+![מצב תוך כדי העסקה](./rollbackcommotphoto/Screenshot%202026-05-05%20205653.png)
+4. ביצוע פקודת ה-`ROLLBACK`:
+![ביצוע Rollback](./rollbackcommotphoto/Screenshot%202026-05-05%20205702.png)
+5. מצב בסיס הנתונים **אחרי ה-ROLLBACK** (הנתונים חזרו לקדמותם):
+![מצב סופי - חזר לקדמותו](./rollbackcommotphoto/Screenshot%202026-05-05%20205711.png)
 
 **תהליך COMMIT (אישור פעולה לבסיס הנתונים):**
-```sql
-BEGIN;
-UPDATE route SET estimated_duration_minutes = estimated_duration_minutes + 10 WHERE route_id = 1;
--- *הדפסה להראות שזמן המסלול גדל*
-COMMIT;
--- *הדפסה סופית שמראה כי הערך החדש נשמר.*
-```
-
-**תמונות הדגמה לשלבי העסקאות (לפני, הפעולה ואחרי):**
-![Rollback 1](./rollbackcommotphoto/Screenshot%202026-05-05%20205354.png)
-![Rollback 2](./rollbackcommotphoto/Screenshot%202026-05-05%20205426.png)
-![Rollback 3](./rollbackcommotphoto/Screenshot%202026-05-05%20205653.png)
-![Rollback 4](./rollbackcommotphoto/Screenshot%202026-05-05%20205702.png)
-![Rollback 5](./rollbackcommotphoto/Screenshot%202026-05-05%20205711.png)
-
-![Commit 1](./rollbackcommotphoto/Screenshot%202026-05-05%20205835.png)
-![Commit 2](./rollbackcommotphoto/image%20copy%202.png)
-![Commit 3](./rollbackcommotphoto/image%20copy%203.png)
-![Commit 4](./rollbackcommotphoto/image%20copy.png)
-![Commit 5](./rollbackcommotphoto/image.png)
+דוגמה להוספת זמן למסלול ושמירת השינוי.
+1. מצב בסיס הנתונים **לפני** תחילת העסקה:
+![מצב לפני Commit](./rollbackcommotphoto/Screenshot%202026-05-05%20205835.png)
+2. הרצת העדכון בתוך הבלוק (`BEGIN; UPDATE...`):
+![הרצת פקודת העדכון](./rollbackcommotphoto/image%20copy%202.png)
+3. מצב בסיס הנתונים **בזמן העסקה** (לפני האישור):
+![מצב תוך כדי העסקה](./rollbackcommotphoto/image%20copy%203.png)
+4. ביצוע פקודת ה-`COMMIT`:
+![ביצוע Commit](./rollbackcommotphoto/image%20copy.png)
+5. מצב בסיס הנתונים **אחרי ה-COMMIT** (הנתונים נשמרו בהצלחה):
+![מצב סופי - הנתון התעדכן](./rollbackcommotphoto/image.png)
 
 ---
 
 ## אינדקסים (Indexes) - דוח מוטיבציה, תועלת וזמני ריצה
 
-**מוטיבציה ותועלת:** אינדקס משמש כמו תוכן עניינים למסד הנתונים. במקום שהמנוע יסרוק שורה אחר שורה כדי למצוא תאריך מסוים או מזהה (Sequential Scan - סריקה רציפה O(N)), האינדקס בונה עץ המאפשר חיפוש יעיל ומהיר ביותר (Index Scan או Bitmap Heap Scan - חיפוש לוגריתמי O(log N)). זה קריטי בטבלאות גדולות כמו `trip` או בטבלאות קשר בזמן ביצוע JOIN.
+**מוטיבציה כללית לאינדקסים:**
+בסיס הנתונים שלנו מכיל עשרות אלפי רשומות (למשל 20,000 נסיעות בטבלת `trip`). ללא אינדקסים, כל שאילתה עם תנאי WHERE מחייבת **Seq Scan** - סריקה רציפה של כל הרשומות בטבלה מהשורה הראשונה לאחרונה (מורכבות O(N)). הוספת אינדקס B-Tree יוצרת מבנה נתונים עצי שמאפשר **Index Scan** — חיפוש לוגריתמי O(log N) מהיר ויעיל בהרבה. נבדוק זמני ריצה לפני ואחרי כל אינדקס באמצעות `EXPLAIN ANALYZE`.
 
-**אינדקס 1: על תאריך הנסיעה `idx_trip_date` בטבלת TRIP**
-מסייע בשליפות לפי תאריכים.
+---
+
+### אינדקס 1: `idx_trip_date` — על עמודת `trip_date` בטבלת TRIP
+
+**מוטיבציה:** שאילתות לפי תאריך נסיעה הן הנפוצות ביותר במערכת — מסך ה-Schedule, דוחות עומסים ועוד. ללא אינדקס, שאילתה שמסננת לפי `trip_date` סורקת את כל 20,000 הרשומות בטבלה.
+
+**פקודת יצירת האינדקס:**
 ```sql
 CREATE INDEX idx_trip_date ON trip(trip_date);
 ```
-**אינדקס 2: על עמודת המפתח הזר `route_id` בטבלת הקשר ROUTE_STOP**
-מסייע בשאילתות ששולפות את כל התחנות עבור מסלול נתון.
+
+**השאילתה שנבדקה לפני ואחרי:**
+```sql
+EXPLAIN ANALYZE
+SELECT * FROM trip
+WHERE trip_date = '2025-05-01';
+```
+
+**ניתוח התוצאות:**
+- **לפני האינדקס:** הפלט מראה `Seq Scan on trip` — המנוע סרק את כל הטבלה כדי למצוא תאריכים מסוימים. העלות (Cost) וה-Execution Time היו גבוהים.
+- **אחרי האינדקס:** הפלט מראה `Bitmap Index Scan` או `Index Scan using idx_trip_date` — המנוע השתמש בעץ האינדקס ואיתר ישירות רק את הרשומות הרלוונטיות. ירידה דרמטית בזמן הריצה.
+
+**בדיקת זמן ריצה לפני האינדקס (Seq Scan):**
+![לפני אינדקס 1](./indexphoto/Screenshot%202026-05-05%20210510.png)
+
+**יצירת האינדקס + בדיקה אחרי (Index Scan):**
+![אחרי אינדקס 1 - א](./indexphoto/Screenshot%202026-05-05%20211025.png)
+![אחרי אינדקס 1 - ב](./indexphoto/Screenshot%202026-05-05%20211146.png)
+
+---
+
+### אינדקס 2: `idx_route_stop_route` — על עמודת `route_id` בטבלת ROUTE_STOP
+
+**מוטיבציה:** טבלת `route_stop` היא טבלת קשר בין מסלולים לתחנות ומכילה אלפי רשומות. שאילתת מסך "Route Details" מחפשת את כל התחנות עבור מסלול ספציפי לפי `route_id`. ללא אינדקס, המנוע סורק את כל טבלת הקשר. בנוסף, שאילתות JOIN בין `route` ל-`route_stop` משתפרות משמעותית כשיש אינדקס על המפתח הזר.
+
+**פקודת יצירת האינדקס:**
 ```sql
 CREATE INDEX idx_route_stop_route ON route_stop(route_id);
 ```
-**אינדקס 3: על המפתח הזר `region_id` בטבלת ROUTE**
-מסייע בעת סינון מסלולים לפי אזורים.
+
+**השאילתה שנבדקה לפני ואחרי:**
+```sql
+EXPLAIN ANALYZE
+SELECT * FROM route_stop
+WHERE route_id = 10;
+```
+
+**ניתוח התוצאות:**
+- **לפני האינדקס:** `Seq Scan on route_stop` — סריקה מלאה של טבלת הקשר למצוא רשומות עבור מסלול 10. זמן ריצה גבוה בגלל גודל הטבלה.
+- **אחרי האינדקס:** `Index Scan using idx_route_stop_route` — המנוע מאתר מיידית את כל התחנות של מסלול 10 דרך עץ האינדקס. חיסכון עצום בסריקה.
+
+**בדיקת זמן ריצה לפני האינדקס:**
+![לפני אינדקס 2 - א](./indexphoto/Screenshot%202026-05-05%20211214.png)
+![לפני אינדקס 2 - ב](./indexphoto/Screenshot%202026-05-05%20211246.png)
+
+**בדיקת זמן ריצה אחרי האינדקס:**
+![אחרי אינדקס 2 - א](./indexphoto/Screenshot%202026-05-05%20211316.png)
+![אחרי אינדקס 2 - ב](./indexphoto/Screenshot%202026-05-05%20211333.png)
+
+---
+
+### אינדקס 3: `idx_route_region` — על עמודת `region_id` בטבלת ROUTE
+
+**מוטיבציה:** שאילתות סטטיסטיות רבות במערכת (מסך Dashboard, דוח עומסים לפי אזור) מסננות מסלולים לפי `region_id`. ללא אינדקס, המנוע סורק את כל 600 המסלולים כדי למצוא את אלה השייכים לאזור מסוים. אינדקס על `region_id` מאפשר גם ביצועי JOIN מהירים יותר בין `region` ל-`route`.
+
+**פקודת יצירת האינדקס:**
 ```sql
 CREATE INDEX idx_route_region ON route(region_id);
 ```
 
-**בדיקת EXPLAIN ANALYZE:**
-בדקנו לפני הוספת האינדקסים ואחרי הוספתם באמצעות `EXPLAIN ANALYZE`. 
-- **לפני האינדקס:** ניתן לראות בתוצאות שמסד הנתונים ביצע "Seq Scan" (סריקה מלאה) וה-Execution Time היה גבוה יותר.
-- **אחרי האינדקס:** תכנון השאילתה מראה "Index Scan" או "Bitmap Index Scan", וניתן לראות צמצום דרמטי בעלות הריצה (Cost) ובזמן (Execution Time).
-**תוצאות הריצה של ה-Explain לפני ואחרי האינדקסים:**
-![Index 1](./indexphoto/Screenshot%202026-05-05%20210510.png)
-![Index 2](./indexphoto/Screenshot%202026-05-05%20211025.png)
-![Index 3](./indexphoto/Screenshot%202026-05-05%20211146.png)
-![Index 4](./indexphoto/Screenshot%202026-05-05%20211214.png)
-![Index 5](./indexphoto/Screenshot%202026-05-05%20211246.png)
-![Index 6](./indexphoto/Screenshot%202026-05-05%20211316.png)
-![Index 7](./indexphoto/Screenshot%202026-05-05%20211333.png)
-![Index 8](./indexphoto/Screenshot%202026-05-05%20211353.png)
-![Index 9](./indexphoto/Screenshot%202026-05-05%20211408.png)
-![Index 10](./indexphoto/Screenshot%202026-05-05%20211421.png)
-![Index 11](./indexphoto/Screenshot%202026-05-05%20211440.png)
+**השאילתה שנבדקה לפני ואחרי:**
+```sql
+EXPLAIN ANALYZE
+SELECT * FROM route
+WHERE region_id = 5;
+```
+
+**ניתוח התוצאות:**
+- **לפני האינדקס:** `Seq Scan on route` — כל 600 המסלולים נסרקים גם אם רק מספר קטן שייך לאזור 5. עלות גבוהה.
+- **אחרי האינדקס:** `Index Scan using idx_route_region` — המנוע קופץ ישירות לרשומות של אזור 5 בלבד. זמן ריצה מינימלי.
+- **מסקנה:** ככל שמספר האזורים גדול יחסית למספר המסלולים לאזור, כך האינדקס יעיל יותר.
+
+**בדיקת זמן ריצה לפני האינדקס:**
+![לפני אינדקס 3 - א](./indexphoto/Screenshot%202026-05-05%20211353.png)
+![לפני אינדקס 3 - ב](./indexphoto/Screenshot%202026-05-05%20211408.png)
+
+**בדיקת זמן ריצה אחרי האינדקס:**
+![אחרי אינדקס 3 - א](./indexphoto/Screenshot%202026-05-05%20211421.png)
+![אחרי אינדקס 3 - ב](./indexphoto/Screenshot%202026-05-05%20211440.png)
 
 ---
 
