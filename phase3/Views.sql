@@ -35,3 +35,20 @@ JOIN public.trip_5626 t ON reg.trip_id = t.trip_id;
 
 -- שאילתא 2 על מבט 2: ספירת כמות הנסיעות של כל נוסע (לנוסעים שנסעו לפחות פעם אחת)
 -- SELECT pass_fullname, COUNT(trip_id) AS total_trips FROM view_passenger_trip_details GROUP BY pass_fullname ORDER BY total_trips DESC;
+CREATE OR REPLACE VIEW schedule_trip_view AS
+SELECT
+    t.trip_id,
+    t.trip_date,
+    t.departure_time,
+    t.available_seats,
+    r.route_name,
+    r.start_location,
+    r.end_location,
+    d.driver_fullname,
+    v.plate_number,
+    v.vehicle_type,
+    v.capacity
+FROM trip_5626 t
+LEFT JOIN route_5626 r ON t.route_id = r.route_id
+LEFT JOIN driver d ON t.driver_id = d.driver_id
+LEFT JOIN vehicle_5626 v ON t.plate_number = v.plate_number;
