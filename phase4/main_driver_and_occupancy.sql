@@ -1,12 +1,156 @@
 -- ==========================================
 -- תוכנית ראשית 2: main_driver_and_occupancy
--- תיאור: מדגימה שיבוץ נהגים אוטומטי (auto_assign_drivers_to_future_trips)
---        וחישוב תפוסת נסיעה (calculate_trip_occupancy).
---        התוכנית מדגימה גם את השפעת טריגר הרישום על מקומות פנויים ותפוסה.
---        התוכנית מריצה הכל בטרנזקציה אחת מבוקרת ומבצעת בסופה ROLLBACK.
+-- תיאור: יוצרת את הפרוצדורה והפונקציה הנדרשות בבסיס הנתונים (מחוץ לטרנזקציה)
+--        ולאחר מכן מדגימה שיבוץ נהגים אוטומטי, חישוב תפוסה ופעילות טריגרים.
+--        התוכנית מריצה את הבדיקה בתוך טרנזקציה ומבצעת בסופה ROLLBACK.
 -- ==========================================
 
+-- ==========================================
+-- 1. יצירת הפרוצדורה auto_assign_drivers_to_future_trips
+-- ==========================================
+DROP PROCEDURE IF EXISTS auto_assign_drivers_to_future_trips();
+
+CREATE OR REPLACE PROCEDURE auto_assign_drivers_to_future_trips()
+AS $$
+DECLARE
+    -- כורסור מפורש לשליפת נסיעות עתידיות שבהן חסר נהג
+    cur_trips CURSOR FOR 
+        SELECT trip_id, trip_date, route_id 
+        FROM trip 
+        WHERE trip_date >= CURRENT_DATE AND driver_id IS NULL
+        ORDER BY trip_date, trip_id;
+        
+    r_trip RECORD;
+    v_driver_ids INT[];
+    v_driver_count INT;
+    v_index INT := 1;
+    v_assigned_driver_id INT;
+    v_driver_name VARCHAR(100);
+    v_route_name VARCHAR(100);
+BEGIN
+    -- שליפת כל מזהי הנהגים הקיימים במערכת ומיונם לתוך מערך
+    SELECT ARRAY(SELECT driver_id FROM driver ORDER BY driver_id) INTO v_driver_ids;
+    v_driver_count := ARRAY_LENGTH(v_driver_ids, 1);
+    
+    -- אם אין נהגים במערכת, נמנע משיבוץ
+    IF v_driver_count IS NULL OR v_driver_count = 0 THEN
+        RAISE EXCEPTION 'שגיאה: לא נמצאו נהגים במערכת לצורך שיבוץ אוטומטי.';
+    END IF;
+
+    -- פתיחת הכורסור
+    OPEN cur_trips;
+    
+    LOOP
+        -- שליפת השורה הבאה לתוך ה-RECORD
+        FETCH cur_trips INTO r_trip;
+        
+        -- תנאי יציאה מהלולאה
+        EXIT WHEN NOT FOUND;
+        
+        -- קביעת מזהה הנהג לפי סבב מעגלי (Round-Robin)
+        v_assigned_driver_id := v_driver_ids[v_index];
+        
+        -- שליפת שם הנהג ושם המסלול
+        SELECT driver_fullname INTO v_driver_name FROM driver WHERE driver_id = v_assigned_driver_id;
+        SELECT route_name INTO v_route_name FROM route WHERE route_id = r_trip.route_id;
+        
+        -- עדכון הנהג בנסיעה
+        UPDATE trip 
+        SET driver_id = v_assigned_driver_id 
+        WHERE trip_id = r_trip.trip_id;
+        
+        RAISE NOTICE 'שיבוץ אוטומטי: הנהג % (מזהה %) שובץ בהצלחה לנסיעה % בתאריך % (מסלול: %).', 
+            v_driver_name, v_assigned_driver_id, r_trip.trip_id, r_trip.trip_date, v_route_name;
+            
+        -- קידום האינדקס הנהג במערך
+        v_index := v_index + 1;
+        IF v_index > v_driver_count THEN
+            v_index := 1;
+        END IF;
+    END LOOP;
+    
+    -- סגירת הכורסור
+    CLOSE cur_trips;
+    
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'שגיאה במהלך שיבוץ הנהגים האוטומטי: %', SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- ==========================================
+-- 2. יצירת הפונקציה calculate_trip_occupancy
+-- ==========================================
+DROP FUNCTION IF EXISTS calculate_trip_occupancy(INT);
+
+CREATE OR REPLACE FUNCTION calculate_trip_occupancy(p_trip_id INT)
+RETURNS TABLE(
+    trip_id INT,
+    capacity INT,
+    available_seats INT,
+    registered_passengers INT,
+    occupancy_percent NUMERIC,
+    status_text VARCHAR
+) AS $$
+DECLARE
+    v_capacity INT;
+    v_available_seats INT;
+    v_registered_count INT;
+    v_occupancy_pct NUMERIC;
+    v_status VARCHAR(20);
+    v_trip_exists BOOLEAN;
+BEGIN
+    -- בדיקה האם הנסיעה קיימת
+    SELECT EXISTS(SELECT 1 FROM trip WHERE trip.trip_id = p_trip_id) INTO v_trip_exists;
+    IF NOT v_trip_exists THEN
+        RAISE EXCEPTION 'שגיאה: נסיעה עם מזהה % אינה קיימת במערכת.', p_trip_id;
+    END IF;
+
+    -- שליפת קיבולת הרכב ומספר המושבים הפנויים
+    SELECT v.capacity, t.available_seats
+    INTO v_capacity, v_available_seats
+    FROM trip t
+    JOIN vehicle v ON t.plate_number = v.plate_number
+    WHERE t.trip_id = p_trip_id;
+
+    -- ספירת הנוסעים הרשומים
+    SELECT COUNT(*)::INT
+    INTO v_registered_count
+    FROM registration r
+    WHERE r.trip_id = p_trip_id
+      AND (r.status IS NULL OR r.status <> 'Cancelled');
+
+    -- חישוב אחוז התפוסה
+    IF v_capacity > 0 THEN
+        v_occupancy_pct := ROUND((v_registered_count::NUMERIC / v_capacity::NUMERIC) * 100, 2);
+    ELSE
+        v_occupancy_pct := 0.00;
+    END IF;
+
+    -- קביעת הסטטוס המילולי
+    IF v_occupancy_pct >= 100.00 OR v_available_seats = 0 THEN
+        v_status := 'FULL';
+    ELSIF v_occupancy_pct >= 80.00 THEN
+        v_status := 'ALMOST FULL';
+    ELSE
+        v_status := 'AVAILABLE';
+    END IF;
+
+    RETURN QUERY
+    SELECT p_trip_id, v_capacity, v_available_seats, v_registered_count, v_occupancy_pct, v_status;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- ==========================================
+-- 3. הרצת הבדיקה (בתוך טרנזקציה שמבוטלת בסוף)
+-- ==========================================
 BEGIN;
+
+-- מחיקה מקדימה של נתוני בדיקה קודמים כדי למנוע התנגשויות (אם קיימים בטבלאות)
+DELETE FROM registration WHERE reg_id = 77777;
+DELETE FROM trip WHERE trip_id = 88888;
 
 -- 1. הכנסת נסיעה עתידית זמנית ללא נהג (driver_id IS NULL)
 SELECT '=== 1. יצירת נסיעה עתידית ללא נהג לצורך בדיקת שיבוץ אוטומטי ===' AS test_stage;
@@ -67,7 +211,7 @@ BEGIN
 END;
 $$;
 
--- חישוב תפוסה לאחר רישום הנוסע (נצפה לראות עליה במספר הרשומים וירידה במקומות הפנויים)
+-- חישוב תפוסה לאחר רישום הנוסע
 SELECT * FROM calculate_trip_occupancy(88888);
 
 -- 5. עדכון סטטוס הרישום ל-Cancelled (להפעלת טריגר AFTER UPDATE)
@@ -76,7 +220,7 @@ UPDATE registration
 SET status = 'Cancelled' 
 WHERE reg_id = 77777;
 
--- חישוב תפוסה לאחר ביטול הרישום (נצפה לראות חזרה למצב המקורי)
+-- חישוב תפוסה לאחר ביטול הרישום
 SELECT * FROM calculate_trip_occupancy(88888);
 
 -- 6. ביטול השינויים ושמירה על בסיס הנתונים נקי

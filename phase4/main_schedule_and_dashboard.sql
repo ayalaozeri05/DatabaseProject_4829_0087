@@ -134,6 +134,7 @@ BEGIN;
 SELECT '=== 1. דשבורד מסלולים לפני הוספת הנסיעה ===' AS test_stage;
 SELECT get_route_dashboard();
 FETCH ALL FROM "route_dashboard_cursor";
+CLOSE "route_dashboard_cursor";
 
 -- בחירה דינמית של מזהים קיימים לטובת זימון הנסיעה
 DO $$
@@ -174,6 +175,7 @@ WHERE trip_id = 99999;
 SELECT '=== 4. דשבורד מסלולים לאחר הוספת הנסיעה (שים לב לעמודת future_trip_count) ===' AS test_stage;
 SELECT get_route_dashboard();
 FETCH ALL FROM "route_dashboard_cursor";
+CLOSE "route_dashboard_cursor";
 
 -- ביטול השינויים (ROLLBACK) לשמירה על בסיס נתונים נקי
 SELECT '=== 5. ביצוע ROLLBACK לביטול הנתונים הזמניים ===' AS test_stage;
