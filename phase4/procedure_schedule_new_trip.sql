@@ -7,14 +7,15 @@
 
 -- מחיקת הפרוצדורה במידה והיא קיימת
 DROP PROCEDURE IF EXISTS schedule_new_trip(INT, INT, DATE, VARCHAR(5), INT, VARCHAR(15), INT);
+DROP PROCEDURE IF EXISTS schedule_new_trip(INT, INT, DATE, VARCHAR, INT, VARCHAR, INT);
 
 CREATE OR REPLACE PROCEDURE schedule_new_trip(
     p_trip_id INT,
     p_route_id INT,
     p_trip_date DATE,
-    p_departure_time VARCHAR(5),
+    p_departure_time VARCHAR,
     p_expected_passengers INT,
-    p_plate_number VARCHAR(15),
+    p_plate_number VARCHAR,
     p_driver_id INT
 ) AS $$
 DECLARE
@@ -70,9 +71,11 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ==========================================
--- הרצת בדיקה לדוגמה (בתוך טרנזקציה שמבוטלת בסוף)
+-- הרצת בדיקה לדוגמה (ללא טרנזקציה על מנת לשמור על הפרוצדורה בבסיס הנתונים)
 -- ==========================================
-BEGIN;
+-- ניקוי מקדים של מפתח הבדיקה כדי למנוע שגיאות הרצה חוזרת
+DELETE FROM trip WHERE trip_id = 99988;
+
 DO $$
 DECLARE
     v_route_id INT;
@@ -86,7 +89,15 @@ BEGIN
 
     -- קריאה לפרוצדורה עם מזהה זמני 99988
     IF v_route_id IS NOT NULL AND v_plate IS NOT NULL AND v_driver_id IS NOT NULL THEN
-        CALL schedule_new_trip(99988, v_route_id, CURRENT_DATE + 5, '10:00', 3, v_plate, v_driver_id);
+        CALL schedule_new_trip(
+            99988, 
+            v_route_id, 
+            (CURRENT_DATE + 5)::DATE, 
+            '10:00'::VARCHAR, 
+            3, 
+            v_plate::VARCHAR, 
+            v_driver_id
+        );
     END IF;
 END;
 $$;
@@ -94,5 +105,6 @@ $$;
 -- בדיקה שהנסיעה אכן נוספה לטבלת הנסיעות
 SELECT * FROM trip WHERE trip_id = 99988;
 
--- ביטול הטרנזקציה לשמירה על בסיס הנתונים נקי
-ROLLBACK;
+-- ניקוי נתוני הבדיקה בלבד (משאיר את הפרוצדורה קיימת בבסיס הנתונים)
+DELETE FROM trip WHERE trip_id = 99988;
+

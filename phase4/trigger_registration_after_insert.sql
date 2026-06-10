@@ -51,9 +51,11 @@ FOR EACH ROW
 EXECUTE FUNCTION trg_registration_after_insert();
 
 -- ==========================================
--- הרצת בדיקה לדוגמה (בתוך טרנזקציה שמבוטלת בסוף)
+-- הרצת בדיקה לדוגמה (ללא טרנזקציה על מנת לשמור על הטריגר בבסיס הנתונים)
 -- ==========================================
-BEGIN;
+-- ניקוי מקדים של מפתח הבדיקה כדי למנוע שגיאות הרצה חוזרת
+DELETE FROM registration WHERE reg_id = 99901;
+
 DO $$
 DECLARE
     v_trip_id INT;
@@ -82,5 +84,10 @@ $$;
 -- בדיקה שמספר המקומות הפנויים התעדכן
 SELECT trip_id, available_seats FROM trip WHERE trip_id = (SELECT trip_id FROM registration WHERE reg_id = 99901);
 
--- ביטול שינויים
-ROLLBACK;
+-- החזרת המצב לקדמותו וניקוי נתוני הבדיקה בלבד (משאיר את הטריגר קיים בבסיס הנתונים)
+UPDATE trip 
+SET available_seats = available_seats + 1 
+WHERE trip_id = (SELECT trip_id FROM registration WHERE reg_id = 99901);
+
+DELETE FROM registration WHERE reg_id = 99901;
+
