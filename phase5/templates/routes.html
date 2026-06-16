@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Routes – TransRoute{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>🗺️ Routes Management</h1>
+  <p>Create, view, update and delete transport routes</p>
+</div>
+
+<div class="toolbar">
+  <div class="toolbar-search"><input id="search" placeholder="Search by name or region…" oninput="filterTable()"></div>
+  <div class="toolbar-sep"></div>
+  <button class="btn btn-success" onclick="openAdd()">＋ Add Route</button>
+  <button class="btn btn-primary" onclick="openEdit()">✏️ Edit</button>
+  <button class="btn btn-danger"  onclick="deleteRow()">🗑 Delete</button>
+  <button class="btn btn-ghost"   onclick="loadData()">🔄 Refresh</button>
+</div>
+
+<div class="card">
+  <div id="table-wrap"></div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">Route</h3>
+      <button class="modal-close" onclick="closeModal('modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="f-id">
+      <div class="form-grid">
+        <div class="form-group full"><label>Route Name *</label><input id="f-name" placeholder="e.g. Tel Aviv → Haifa"></div>
+        <div class="form-group"><label>Start Location *</label><input id="f-start" placeholder="From"></div>
+        <div class="form-group"><label>End Location *</label><input id="f-end" placeholder="To"></div>
+        <div class="form-group"><label>Distance (km) *</label><input id="f-dist" type="number" step="0.1" min="0"></div>
+        <div class="form-group"><label>Duration (min) *</label><input id="f-dur" type="number" min="1"></div>
+        <div class="form-group full"><label>Region *</label><select id="f-region"></select></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal')">Cancel</button>
+      <button class="btn btn-success" onclick="save()">💾 Save</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let rows = [], selectedId = null, regions = [];
+
+async function loadData() {
+  [rows, regions] = await Promise.all([api('/api/routes'), api('/api/lookup/regions')]);
+  renderTable(rows);
+}
+
+function renderTable(data) {
+  const cols = [
+    {key:'route_name', label:'Route Name'},
+    {key:'region', label:'Region'},
+    {key:'start_location', label:'From'},
+    {key:'end_location', label:'To'},
+    {key:'distance_km', label:'Distance km'},
+    {key:'duration_min', label:'Duration min'},
+    {key:'stops', label:'Stops'},
+    {key:'future_trips', label:'Future Trips'},
+  ];
+  const html = buildTable(data, cols);
+  document.getElementById('table-wrap').innerHTML = html;
+  document.querySelectorAll('#table-wrap tbody tr').forEach((tr, i) => {
+    tr.addEventListener('click', () => selectRow(i, tr));
+  });
+}
+
+function selectRow(i, tr) {
+  document.querySelectorAll('#table-wrap tbody tr').forEach(r => r.classList.remove('selected'));
+  tr.classList.add('selected');
+  selectedId = rows[i].route_id;
+}
+
+function filterTable() {
+  const q = document.getElementById('search').value.toLowerCase();
+  renderTable(rows.filter(r =>
+    (r.route_name||'').toLowerCase().includes(q) ||
+    (r.region||'').toLowerCase().includes(q)
+  ));
+}
+
+function openAdd() {
+  selectedId = null;
+  document.getElementById('modal-title').textContent = 'Add Route';
+  ['f-id','f-name','f-start','f-end','f-dist','f-dur'].forEach(id => document.getElementById(id).value = '');
+  populateSelect(document.getElementById('f-region'), regions, 'region_id', 'regio_name');
+  openModal('modal');
+}
+
+async function openEdit() {
+  if (!selectedId) return toast('Select a route first', 'error');
+  const r = await api(`/api/routes/${selectedId}`);
+  document.getElementById('modal-title').textContent = 'Edit Route';
+  document.getElementById('f-id').value   = r.route_id;
+  document.getElementById('f-name').value = r.route_name;
+  document.getElementById('f-start').value = r.start_location;
+  document.getElementById('f-end').value  = r.end_location;
+  document.getElementById('f-dist').value = r.total_distance_km;
+  document.getElementById('f-dur').value  = r.estimated_duration_minutes;
+  populateSelect(document.getElementById('f-region'), regions, 'region_id', 'regio_name');
+  document.getElementById('f-region').value = r.region_id;
+  openModal('modal');
+}
+
+async function save() {
+  const body = {
+    route_name:   document.getElementById('f-name').value.trim(),
+    start_location: document.getElementById('f-start').value.trim(),
+    end_location: document.getElementById('f-end').value.trim(),
+    distance_km:  document.getElementById('f-dist').value,
+    duration_min: document.getElementById('f-dur').value,
+    region_id:    document.getElementById('f-region').value,
+  };
+  if (!body.route_name || !body.start_location || !body.end_location || !body.distance_km || !body.duration_min || !body.region_id)
+    return toast('All fields are required', 'error');
+  try {
+    const id = document.getElementById('f-id').value;
+    if (id) await api(`/api/routes/${id}`, 'PUT', body);
+    else     await api('/api/routes', 'POST', body);
+    toast('Route saved!');
+    closeModal('modal');
+    loadData();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteRow() {
+  if (!selectedId) return toast('Select a route first', 'error');
+  if (!confirm('Delete this route? Its stops link will also be removed.')) return;
+  try {
+    await api(`/api/routes/${selectedId}`, 'DELETE');
+    toast('Route deleted'); selectedId = null; loadData();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+loadData();
+</script>
+{% endblock %}

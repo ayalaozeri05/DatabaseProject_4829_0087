@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Vehicles – TransRoute{% endblock %}
+{% block content %}
+<div class="page-header"><h1>🚗 Vehicles Management</h1><p>Manage vehicle fleet</p></div>
+
+<div class="toolbar">
+  <div class="toolbar-search"><input id="search" placeholder="Search plate or type…" oninput="filterTable()"></div>
+  <div class="toolbar-sep"></div>
+  <button class="btn btn-success" onclick="openAdd()">＋ Add Vehicle</button>
+  <button class="btn btn-primary" onclick="openEdit()">✏️ Edit</button>
+  <button class="btn btn-danger"  onclick="deleteRow()">🗑 Delete</button>
+  <button class="btn btn-ghost"   onclick="loadData()">🔄 Refresh</button>
+</div>
+
+<div class="card"><div id="table-wrap"></div></div>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">Vehicle</h3>
+      <button class="modal-close" onclick="closeModal('modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group full"><label>Plate Number *</label><input id="f-plate" placeholder="e.g. ABC-123"></div>
+        <div class="form-group"><label>Vehicle Type *</label>
+          <select id="f-type">
+            <option value="Bus">Bus</option>
+            <option value="Minibus">Minibus</option>
+            <option value="Van">Van</option>
+            <option value="Coach">Coach</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Capacity *</label><input id="f-cap" type="number" min="1" max="120"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal')">Cancel</button>
+      <button class="btn btn-success" onclick="save()">💾 Save</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let rows=[], selectedPlate=null;
+
+async function loadData() {
+  rows = await api('/api/vehicles');
+  renderTable(rows);
+}
+
+function renderTable(data) {
+  const cols = [
+    {key:'plate_number', label:'Plate Number'},
+    {key:'vehicle_type', label:'Type'},
+    {key:'capacity', label:'Capacity'},
+    {key:'total_trips', label:'Total Trips'},
+    {key:'regions', label:'Regions Served'},
+  ];
+  document.getElementById('table-wrap').innerHTML = buildTable(data, cols);
+  document.querySelectorAll('#table-wrap tbody tr').forEach((tr,i) => {
+    tr.addEventListener('click', () => {
+      document.querySelectorAll('#table-wrap tbody tr').forEach(r=>r.classList.remove('selected'));
+      tr.classList.add('selected'); selectedPlate = data[i].plate_number;
+    });
+  });
+}
+
+function filterTable() {
+  const q = document.getElementById('search').value.toLowerCase();
+  renderTable(rows.filter(r =>
+    (r.plate_number||'').toLowerCase().includes(q) ||
+    (r.vehicle_type||'').toLowerCase().includes(q)
+  ));
+}
+
+function openAdd() {
+  selectedPlate = null;
+  document.getElementById('modal-title').textContent = 'Add Vehicle';
+  document.getElementById('f-plate').value = '';
+  document.getElementById('f-plate').readOnly = false;
+  document.getElementById('f-cap').value = '';
+  openModal('modal');
+}
+
+async function openEdit() {
+  if (!selectedPlate) return toast('Select a vehicle first', 'error');
+  const r = await api(`/api/vehicles/${selectedPlate}`);
+  document.getElementById('modal-title').textContent = 'Edit Vehicle';
+  document.getElementById('f-plate').value = r.plate_number;
+  document.getElementById('f-plate').readOnly = true;
+  document.getElementById('f-type').value = r.vehicle_type;
+  document.getElementById('f-cap').value  = r.capacity;
+  openModal('modal');
+}
+
+async function save() {
+  const plate = document.getElementById('f-plate').value.trim();
+  const body = { plate_number: plate, vehicle_type: document.getElementById('f-type').value, capacity: document.getElementById('f-cap').value };
+  if (!plate || !body.capacity) return toast('Plate and capacity required', 'error');
+  try {
+    if (document.getElementById('f-plate').readOnly)
+      await api(`/api/vehicles/${plate}`, 'PUT', body);
+    else
+      await api('/api/vehicles', 'POST', body);
+    toast('Vehicle saved!'); closeModal('modal'); loadData();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteRow() {
+  if (!selectedPlate) return toast('Select a vehicle first', 'error');
+  if (!confirm(`Delete vehicle ${selectedPlate}?`)) return;
+  try { await api(`/api/vehicles/${selectedPlate}`, 'DELETE'); toast('Vehicle deleted'); selectedPlate=null; loadData(); }
+  catch(e) { toast(e.message, 'error'); }
+}
+
+loadData();
+</script>
+{% endblock %}

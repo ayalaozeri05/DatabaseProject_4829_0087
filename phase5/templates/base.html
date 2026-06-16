@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}TransRoute Planner{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<!-- ── Navbar ──────────────────────────────────────────────────────────────── -->
+<nav class="navbar">
+  <a href="/" class="navbar-logo"><span>🚌</span> TransRoute Planner</a>
+  <div class="navbar-divider"></div>
+  <div class="navbar-nav">
+    <a href="/"           class="nav-link">🏠 Dashboard</a>
+    <a href="/routes"     class="nav-link">🗺️ Routes</a>
+    <a href="/trips"      class="nav-link">🚌 Trips</a>
+    <a href="/vehicles"   class="nav-link">🚗 Vehicles</a>
+    <a href="/drivers"    class="nav-link">🧑‍✈️ Drivers</a>
+    <a href="/passengers" class="nav-link">👤 Passengers</a>
+    <a href="/stops"      class="nav-link">📍 Stops</a>
+    <a href="/queries"    class="nav-link">📊 Queries</a>
+  </div>
+  <div class="navbar-right">
+    <span class="db-badge" id="db-status">● Connected</span>
+  </div>
+</nav>
+
+<!-- ── Content ─────────────────────────────────────────────────────────────── -->
+<div class="page-wrap">
+  {% block content %}{% endblock %}
+</div>
+
+<!-- ── Toasts ──────────────────────────────────────────────────────────────── -->
+<div class="toast-container" id="toast-container"></div>
+
+<script src="/static/js/main.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

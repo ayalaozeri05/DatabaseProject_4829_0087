@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – TransRoute{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>🏠 Dashboard</h1>
+  <p>Live overview of the TransRoute Planner system</p>
+</div>
+
+<!-- Stat cards -->
+<div class="stats-grid" id="stats-grid">
+  <div class="stat-card" style="--c:#5b5fcf"><div class="stat-icon">🗺️</div><div class="stat-value" id="s-routes">—</div><div class="stat-label">Routes</div></div>
+  <div class="stat-card" style="--c:#22a06b"><div class="stat-icon">🚌</div><div class="stat-value" id="s-trips">—</div><div class="stat-label">Trips</div></div>
+  <div class="stat-card" style="--c:#d97706"><div class="stat-icon">🚗</div><div class="stat-value" id="s-vehicles">—</div><div class="stat-label">Vehicles</div></div>
+  <div class="stat-card" style="--c:#7c3aed"><div class="stat-icon">🧑‍✈️</div><div class="stat-value" id="s-drivers">—</div><div class="stat-label">Drivers</div></div>
+  <div class="stat-card" style="--c:#e67e22"><div class="stat-icon">👤</div><div class="stat-value" id="s-passengers">—</div><div class="stat-label">Passengers</div></div>
+  <div class="stat-card" style="--c:#1abc9c"><div class="stat-icon">📍</div><div class="stat-value" id="s-stops">—</div><div class="stat-label">Stops</div></div>
+</div>
+
+<!-- Today bar -->
+<div class="card" style="margin-bottom:24px">
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);text-align:center;padding:20px 0">
+    <div>
+      <div style="font-size:12px;color:var(--text-sec);font-weight:500">📅 Today's Trips</div>
+      <div style="font-size:32px;font-weight:700;color:var(--accent)" id="s-today">—</div>
+    </div>
+    <div style="border-left:1px solid var(--border);border-right:1px solid var(--border)">
+      <div style="font-size:12px;color:var(--text-sec);font-weight:500">🔮 Future Trips</div>
+      <div style="font-size:32px;font-weight:700;color:var(--green)" id="s-future">—</div>
+    </div>
+    <div>
+      <div style="font-size:12px;color:var(--text-sec);font-weight:500">⚠️ No Driver Assigned</div>
+      <div style="font-size:32px;font-weight:700;color:var(--red)" id="s-nodriver">—</div>
+    </div>
+  </div>
+</div>
+
+<div class="dash-grid">
+  <!-- Recent trips -->
+  <div class="card">
+    <div class="card-header"><h2>🕐 Recent Trips</h2></div>
+    <div id="recent-trips-wrap"></div>
+  </div>
+
+  <!-- Routes by region -->
+  <div class="card">
+    <div class="card-header"><h2>📊 Routes by Region</h2></div>
+    <div class="card-body" id="region-chart"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadDash() {
+  // Stats
+  const s = await api('/api/stats');
+  document.getElementById('s-routes').textContent     = s.routes;
+  document.getElementById('s-trips').textContent      = s.trips;
+  document.getElementById('s-vehicles').textContent   = s.vehicles;
+  document.getElementById('s-drivers').textContent    = s.drivers;
+  document.getElementById('s-passengers').textContent = s.passengers;
+  document.getElementById('s-stops').textContent      = s.stops;
+  document.getElementById('s-today').textContent      = s.today;
+  document.getElementById('s-future').textContent     = s.future;
+  document.getElementById('s-nodriver').textContent   = s.no_driver;
+
+  // Recent trips
+  const trips = await api('/api/stats/recent_trips');
+  const cols = [
+    {key:'trip_date', label:'Date'},
+    {key:'departure_time', label:'Time'},
+    {key:'route_name', label:'Route'},
+    {key:'driver_name', label:'Driver'},
+    {key:'available_seats', label:'Seats Left'},
+    {key:'pct', label:'Occupancy', render: r => occBar(r.pct)},
+  ];
+  document.getElementById('recent-trips-wrap').innerHTML = buildTable(trips, cols);
+
+  // Region chart
+  const regions = await api('/api/query/routes_dashboard', 'POST');
+  // aggregate by region
+  const agg = {};
+  regions.forEach(r => { agg[r.regio_name] = (agg[r.regio_name]||0)+1; });
+  const max = Math.max(...Object.values(agg), 1);
+  const colors = ['#5b5fcf','#22a06b','#d97706','#7c3aed','#e67e22','#1abc9c','#e53e3e','#3498db'];
+  let html = '';
+  Object.entries(agg).sort((a,b)=>b[1]-a[1]).forEach(([name,cnt],i) => {
+    const c = colors[i%colors.length];
+    html += `<div class="region-bar">
+      <div class="region-name">${name}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(cnt/max)*100}%;background:${c}"></div></div>
+      <div class="bar-count" style="color:${c}">${cnt}</div>
+    </div>`;
+  });
+  document.getElementById('region-chart').innerHTML = html || '<div class="no-data">No data</div>';
+}
+loadDash();
+</script>
+{% endblock %}

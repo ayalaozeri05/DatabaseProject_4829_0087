@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+{% block title %}Queries & Procedures – TransRoute{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>📊 Queries & Stored Procedures</h1>
+  <p>Run Phase-2 SQL queries and Phase-4 stored procedures / functions</p>
+</div>
+
+<div style="display:flex;gap:16px;margin-bottom:8px">
+  <span style="font-size:13px;font-weight:700;color:var(--accent);background:var(--accent-lt);padding:4px 14px;border-radius:20px">📋 Phase 2 – SQL Queries</span>
+</div>
+
+<div class="query-grid">
+
+  <!-- Q1: Routes Dashboard -->
+  <div class="query-card">
+    <div class="query-card-header">
+      <h3>Query 1 – Routes Dashboard</h3>
+      <p>JOIN + GROUP BY to get route stats per region</p>
+    </div>
+    <div class="query-card-body">
+      <div class="sql-block">SELECT r.route_id, r.route_name, reg.regio_name,
+       r.estimated_duration_minutes,
+       r.total_distance_km,
+       COUNT(rs.stop_id) AS total_stops
+FROM route r
+JOIN region reg ON r.region_id = reg.region_id
+LEFT JOIN route_stop rs ON r.route_id = rs.route_id
+GROUP BY r.route_id, r.route_name, reg.regio_name,
+         r.estimated_duration_minutes, r.total_distance_km
+ORDER BY r.route_id</div>
+      <button class="btn btn-success" onclick="runQuery('routes_dashboard','q1-result',
+        ['route_id','route_name','regio_name','estimated_duration_minutes','total_distance_km','total_stops'])">
+        ▶ Run Query
+      </button>
+      <div class="query-result" id="q1-result" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- Q2: Region Stats -->
+  <div class="query-card">
+    <div class="query-card-header">
+      <h3>Query 2 – Avg per Region</h3>
+      <p>AVG + HAVING to filter regions with routes</p>
+    </div>
+    <div class="query-card-body">
+      <div class="sql-block">SELECT reg.regio_name, reg.terrain_type,
+       COUNT(r.route_id) AS routes_count,
+       ROUND(AVG(r.estimated_duration_minutes),2) AS avg_duration,
+       ROUND(AVG(r.total_distance_km)::numeric,2) AS avg_distance
+FROM region reg
+JOIN route r ON reg.region_id = r.region_id
+GROUP BY reg.regio_name, reg.terrain_type
+HAVING COUNT(r.route_id) > 0
+ORDER BY avg_duration DESC</div>
+      <button class="btn btn-success" onclick="runQuery('region_stats','q2-result',
+        ['regio_name','terrain_type','routes_count','avg_duration','avg_distance'])">
+        ▶ Run Query
+      </button>
+      <div class="query-result" id="q2-result" style="display:none"></div>
+    </div>
+  </div>
+
+</div>
+
+<div style="display:flex;gap:16px;margin:24px 0 8px">
+  <span style="font-size:13px;font-weight:700;color:var(--green);background:#f0fdf4;padding:4px 14px;border-radius:20px;border:1px solid #bbf7d0">⚙️ Phase 4 – Stored Procedures & Functions</span>
+</div>
+
+<div class="query-grid">
+
+  <!-- F1: get_route_dashboard refcursor -->
+  <div class="query-card">
+    <div class="query-card-header proc-card-header">
+      <h3>Function: get_route_dashboard()</h3>
+      <p>Refcursor – returns full route dashboard</p>
+    </div>
+    <div class="query-card-body">
+      <p style="font-size:12px;color:var(--text-sec);margin-bottom:12px">
+        Returns a refcursor with route data: name, region, distance, duration, stop count, future trips.
+      </p>
+      <button class="btn btn-primary" onclick="runProc('route_dashboard','p1-result',
+        ['route_id','route_name','region_name','total_distance_km','estimated_duration_minutes','stop_count','future_trip_count'])">
+        ▶ Run Function
+      </button>
+      <div class="query-result" id="p1-result" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- F2: calculate_trip_occupancy -->
+  <div class="query-card">
+    <div class="query-card-header proc-card-header">
+      <h3>Function: calculate_trip_occupancy(trip_id)</h3>
+      <p>Table function – occupancy stats for a specific trip</p>
+    </div>
+    <div class="query-card-body">
+      <p style="font-size:12px;color:var(--text-sec);margin-bottom:12px">
+        Returns capacity, available seats, registered passengers, occupancy%, and status (FULL/ALMOST/AVAILABLE).
+      </p>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+        <label style="font-size:12px;font-weight:600;color:var(--text-sec)">Trip ID:</label>
+        <input id="occ-trip" type="number" style="width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px" placeholder="e.g. 1">
+      </div>
+      <button class="btn btn-primary" onclick="runOccupancy()">▶ Calculate</button>
+      <div class="query-result" id="p2-result" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- P1: schedule_new_trip -->
+  <div class="query-card" style="grid-column:1/-1">
+    <div class="query-card-header proc-card-header">
+      <h3>Procedure: schedule_new_trip(…)</h3>
+      <p>Validates, creates, and inserts a new trip via stored procedure</p>
+    </div>
+    <div class="query-card-body">
+      <p style="font-size:12px;color:var(--text-sec);margin-bottom:16px">
+        Validates route, vehicle, driver; checks capacity; inserts trip with computed available seats.
+      </p>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px">
+        <div class="form-group"><label>Route *</label><select id="st-route"></select></div>
+        <div class="form-group"><label>Date *</label><input id="st-date" type="date"></div>
+        <div class="form-group"><label>Time *</label><input id="st-time" type="time" value="08:00"></div>
+        <div class="form-group"><label>Vehicle *</label><select id="st-vehicle"></select></div>
+        <div class="form-group"><label>Driver</label><select id="st-driver"></select></div>
+        <div class="form-group"><label>Expected Passengers</label><input id="st-pass" type="number" min="0" value="0"></div>
+      </div>
+      <button class="btn btn-primary" onclick="runSchedule()">▶ Schedule Trip</button>
+      <div id="st-result" style="margin-top:10px;font-size:13px;font-weight:500"></div>
+    </div>
+  </div>
+
+  <!-- P2: auto_assign_drivers -->
+  <div class="query-card" style="grid-column:1/-1">
+    <div class="query-card-header proc-card-header">
+      <h3>Procedure: auto_assign_drivers_to_future_trips()</h3>
+      <p>Round-robin driver assignment for all unassigned future trips</p>
+    </div>
+    <div class="query-card-body">
+      <p style="font-size:12px;color:var(--text-sec);margin-bottom:12px">
+        Uses an explicit cursor to iterate over future trips without a driver and assigns available drivers in round-robin order.
+        <strong style="color:var(--orange)"> Trips currently without driver: <span id="no-driver-cnt">…</span></strong>
+      </p>
+      <button class="btn btn-primary" id="aa-btn" onclick="runAutoAssign()">▶ Auto-Assign Drivers</button>
+      <div id="aa-result" style="margin-top:10px;font-size:13px;font-weight:500"></div>
+      <div class="query-result" id="aa-table" style="display:none;margin-top:12px"></div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Load dropdowns for schedule procedure
+async function initDropdowns() {
+  const [routes, vehicles, drivers] = await Promise.all([
+    api('/api/lookup/routes'), api('/api/lookup/vehicles'), api('/api/lookup/drivers')
+  ]);
+  populateSelect(document.getElementById('st-route'), routes, 'route_id', 'route_name');
+  populateSelect(document.getElementById('st-vehicle'), vehicles, 'plate_number', 'plate_number');
+  populateSelect(document.getElementById('st-driver'), drivers, 'driver_id', 'driver_fullname', '— No Driver');
+  document.getElementById('st-date').value = new Date().toISOString().slice(0,10);
+  // Count no-driver
+  try {
+    const s = await api('/api/stats');
+    document.getElementById('no-driver-cnt').textContent = s.no_driver;
+    document.getElementById('no-driver-cnt').style.color = s.no_driver > 0 ? 'var(--red)' : 'var(--green)';
+  } catch(e) {}
+}
+
+async function runQuery(name, resultId, cols) {
+  const el = document.getElementById(resultId);
+  el.style.display = 'block';
+  el.innerHTML = '<div style="padding:12px;color:var(--text-sec)">Loading…</div>';
+  try {
+    const rows = await api(`/api/query/${name}`, 'POST');
+    const headers = cols.map(c => `<th>${c}</th>`).join('');
+    const body = rows.map(r => '<tr>' + cols.map(c => `<td>${r[c] ?? '—'}</td>`).join('') + '</tr>').join('');
+    el.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${body || '<tr><td colspan="${cols.length}" class="no-data">No data</td></tr>'}</tbody></table>`;
+  } catch(e) { el.innerHTML = `<div style="padding:12px;color:var(--red)">Error: ${e.message}</div>`; }
+}
+
+async function runProc(name, resultId, cols) {
+  const el = document.getElementById(resultId);
+  el.style.display = 'block';
+  el.innerHTML = '<div style="padding:12px;color:var(--text-sec)">Running…</div>';
+  try {
+    const rows = await api(`/api/proc/${name}`, 'POST');
+    const headers = cols.map(c => `<th>${c}</th>`).join('');
+    const body = (Array.isArray(rows)?rows:[]).map(r => '<tr>' + cols.map(c => `<td>${r[c] ?? '—'}</td>`).join('') + '</tr>').join('');
+    el.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table>`;
+  } catch(e) { el.innerHTML = `<div style="padding:12px;color:var(--red)">Error: ${e.message}</div>`; }
+}
+
+async function runOccupancy() {
+  const tid = document.getElementById('occ-trip').value;
+  if (!tid) return toast('Enter a Trip ID','error');
+  const el = document.getElementById('p2-result');
+  el.style.display = 'block';
+  el.innerHTML = '<div style="padding:12px;color:var(--text-sec)">Calculating…</div>';
+  try {
+    const rows = await api('/api/proc/trip_occupancy','POST',{trip_id:parseInt(tid)});
+    const cols = ['trip_id','capacity','available_seats','registered_passengers','occupancy_percent','status_text'];
+    const headers = cols.map(c=>`<th>${c}</th>`).join('');
+    const body = (Array.isArray(rows)?rows:[]).map(r=>'<tr>'+cols.map(c=>`<td>${r[c]??'—'}</td>`).join('')+'</tr>').join('');
+    el.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table>`;
+  } catch(e){ el.innerHTML=`<div style="padding:12px;color:var(--red)">Error: ${e.message}</div>`; }
+}
+
+async function runSchedule() {
+  const body = {
+    route_id:        document.getElementById('st-route').value,
+    trip_date:       document.getElementById('st-date').value,
+    departure_time:  document.getElementById('st-time').value,
+    plate_number:    document.getElementById('st-vehicle').value,
+    driver_id:       document.getElementById('st-driver').value || null,
+    expected_pass:   document.getElementById('st-pass').value,
+  };
+  const r = document.getElementById('st-result');
+  r.style.color = 'var(--text-sec)'; r.textContent = 'Scheduling…';
+  try {
+    const res = await api('/api/proc/schedule_trip','POST',body);
+    r.style.color='var(--green)'; r.textContent='✓ ' + res.message;
+    toast('Trip scheduled!');
+  } catch(e){ r.style.color='var(--red)'; r.textContent='✕ ' + e.message; }
+}
+
+async function runAutoAssign() {
+  if (!confirm('Assign drivers to all unassigned future trips? This cannot be undone.')) return;
+  const r = document.getElementById('aa-result');
+  r.textContent='Assigning…'; r.style.color='var(--text-sec)';
+  try {
+    const res = await api('/api/proc/auto_assign','POST');
+    r.style.color='var(--green)'; r.textContent='✓ ' + res.message;
+    toast('Drivers assigned!');
+    // Refresh count
+    const s = await api('/api/stats');
+    document.getElementById('no-driver-cnt').textContent = s.no_driver;
+    // Show table
+    const cols = ['trip_id','trip_date','route_name','driver_name'];
+    const el = document.getElementById('aa-table');
+    el.style.display = 'block';
+    const heads = cols.map(c=>`<th>${c}</th>`).join('');
+    const body = res.trips.map(t=>'<tr>'+cols.map(c=>`<td>${t[c]??'—'}</td>`).join('')+'</tr>').join('');
+    el.innerHTML=`<table><thead><tr>${heads}</tr></thead><tbody>${body}</tbody></table>`;
+  } catch(e){ r.style.color='var(--red)'; r.textContent='✕ ' + e.message; }
+}
+
+initDropdowns();
+</script>
+{% endblock %}

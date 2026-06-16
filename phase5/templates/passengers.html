@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}Passengers – TransRoute{% endblock %}
+{% block content %}
+<div class="page-header"><h1>👤 Passengers & Registrations</h1><p>Manage passengers and their trip registrations</p></div>
+
+<div class="two-pane">
+  <!-- Left: Passengers -->
+  <div>
+    <div class="toolbar" style="margin-bottom:12px">
+      <div class="toolbar-search"><input id="psearch" placeholder="Search passenger…" oninput="filterPass()"></div>
+      <div class="toolbar-sep"></div>
+      <button class="btn btn-success btn-sm" onclick="openAddPass()">＋ Add</button>
+      <button class="btn btn-primary btn-sm" onclick="openEditPass()">✏️ Edit</button>
+      <button class="btn btn-danger  btn-sm" onclick="deletePass()">🗑</button>
+    </div>
+    <div class="card"><div id="pass-table"></div></div>
+  </div>
+
+  <!-- Right: Registrations -->
+  <div>
+    <div class="toolbar" style="margin-bottom:12px">
+      <span style="font-size:13px;font-weight:600;color:var(--text-sec)" id="reg-title">📋 Registrations</span>
+      <div style="flex:1"></div>
+      <button class="btn btn-success btn-sm" onclick="openAddReg()">＋ Register</button>
+      <button class="btn btn-primary btn-sm" onclick="openEditReg()">✏️ Status</button>
+      <button class="btn btn-danger  btn-sm" onclick="deleteReg()">🗑</button>
+    </div>
+    <div class="card"><div id="reg-table"></div></div>
+  </div>
+</div>
+
+<!-- Passenger Modal -->
+<div class="modal-overlay" id="pass-modal">
+  <div class="modal">
+    <div class="modal-header"><h3 id="pm-title">Passenger</h3><button class="modal-close" onclick="closeModal('pass-modal')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="pf-id">
+      <div class="form-grid single">
+        <div class="form-group"><label>Full Name *</label><input id="pf-name" placeholder="Full Name"></div>
+        <div class="form-group"><label>Phone</label><input id="pf-phone" placeholder="+972…"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('pass-modal')">Cancel</button>
+      <button class="btn btn-success" onclick="savePass()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Registration Modal -->
+<div class="modal-overlay" id="reg-modal">
+  <div class="modal">
+    <div class="modal-header"><h3 id="rm-title">Registration</h3><button class="modal-close" onclick="closeModal('reg-modal')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="rf-id">
+      <div class="form-grid">
+        <div class="form-group full"><label>Trip *</label><select id="rf-trip"></select></div>
+        <div class="form-group"><label>Boarding Stop</label><select id="rf-board"></select></div>
+        <div class="form-group"><label>Drop-off Stop</label><select id="rf-drop"></select></div>
+        <div class="form-group full"><label>Status</label>
+          <select id="rf-status">
+            <option>Confirmed</option><option>Pending</option>
+            <option>Cancelled</option><option>Waitlisted</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('reg-modal')">Cancel</button>
+      <button class="btn btn-success" onclick="saveReg()">💾 Save</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let passengers=[], regs=[], trips=[], stops=[];
+let selPassId=null, selRegId=null;
+
+async function loadData() {
+  [passengers, trips, stops] = await Promise.all([
+    api('/api/passengers'), api('/api/lookup/trips'), api('/api/lookup/stops')
+  ]);
+  renderPassTable(passengers);
+}
+
+function renderPassTable(data) {
+  const cols = [
+    {key:'pass_fullname', label:'Name'},
+    {key:'phone', label:'Phone'},
+    {key:'registrations', label:'Trips Registered'},
+  ];
+  document.getElementById('pass-table').innerHTML = buildTable(data, cols);
+  document.querySelectorAll('#pass-table tbody tr').forEach((tr,i) => {
+    tr.addEventListener('click', () => {
+      document.querySelectorAll('#pass-table tbody tr').forEach(r=>r.classList.remove('selected'));
+      tr.classList.add('selected'); selPassId=data[i].pass_id;
+      document.getElementById('reg-title').textContent = `📋 ${data[i].pass_fullname}'s Registrations`;
+      loadRegs(selPassId);
+    });
+  });
+}
+
+function filterPass() {
+  const q = document.getElementById('psearch').value.toLowerCase();
+  renderPassTable(passengers.filter(p => (p.pass_fullname||'').toLowerCase().includes(q)));
+}
+
+async function loadRegs(pid) {
+  regs = await api(`/api/registrations?pass_id=${pid}`);
+  const cols = [
+    {key:'trip_date', label:'Date'},
+    {key:'departure_time', label:'Time'},
+    {key:'route_name', label:'Route'},
+    {key:'boarding', label:'Board At'},
+    {key:'dropoff', label:'Drop At'},
+    {key:'status', label:'Status', render: r => statusBadge(r.status)},
+  ];
+  document.getElementById('reg-table').innerHTML = buildTable(regs, cols);
+  document.querySelectorAll('#reg-table tbody tr').forEach((tr,i) => {
+    tr.addEventListener('click', () => {
+      document.querySelectorAll('#reg-table tbody tr').forEach(r=>r.classList.remove('selected'));
+      tr.classList.add('selected'); selRegId = regs[i].reg_id;
+    });
+  });
+}
+
+// Passenger CRUD
+function openAddPass() {
+  document.getElementById('pm-title').textContent='Add Passenger';
+  ['pf-id','pf-name','pf-phone'].forEach(id=>document.getElementById(id).value='');
+  openModal('pass-modal');
+}
+async function openEditPass() {
+  if (!selPassId) return toast('Select a passenger first','error');
+  const r = await api(`/api/passengers/${selPassId}`);
+  document.getElementById('pm-title').textContent='Edit Passenger';
+  document.getElementById('pf-id').value   = r.pass_id;
+  document.getElementById('pf-name').value = r.pass_fullname;
+  document.getElementById('pf-phone').value= r.phone||'';
+  openModal('pass-modal');
+}
+async function savePass() {
+  const body={pass_fullname:document.getElementById('pf-name').value.trim(), phone:document.getElementById('pf-phone').value.trim()};
+  if (!body.pass_fullname) return toast('Name is required','error');
+  try {
+    const id=document.getElementById('pf-id').value;
+    if (id) await api(`/api/passengers/${id}`,'PUT',body);
+    else    await api('/api/passengers','POST',body);
+    toast('Saved!'); closeModal('pass-modal'); loadData();
+  } catch(e){toast(e.message,'error');}
+}
+async function deletePass() {
+  if (!selPassId) return toast('Select a passenger first','error');
+  if (!confirm('Delete passenger and all registrations?')) return;
+  try { await api(`/api/passengers/${selPassId}`,'DELETE'); toast('Deleted'); selPassId=null; loadData(); }
+  catch(e){toast(e.message,'error');}
+}
+
+// Registration CRUD
+function openAddReg() {
+  if (!selPassId) return toast('Select a passenger first','error');
+  document.getElementById('rm-title').textContent='New Registration';
+  document.getElementById('rf-id').value='';
+  populateSelect(document.getElementById('rf-trip'), trips, 'trip_id', 'label');
+  populateSelect(document.getElementById('rf-board'), stops, 'stop_id', 'stop_name', '— None');
+  populateSelect(document.getElementById('rf-drop'), stops, 'stop_id', 'stop_name', '— None');
+  document.getElementById('rf-status').value='Confirmed';
+  openModal('reg-modal');
+}
+async function openEditReg() {
+  if (!selRegId) return toast('Select a registration first','error');
+  const reg = regs.find(r=>r.reg_id===selRegId);
+  document.getElementById('rm-title').textContent='Update Status';
+  document.getElementById('rf-id').value=selRegId;
+  document.getElementById('rf-status').value=reg.status;
+  populateSelect(document.getElementById('rf-trip'), trips, 'trip_id', 'label');
+  document.getElementById('rf-trip').value = reg.trip_id;
+  document.getElementById('rf-trip').disabled = true;
+  populateSelect(document.getElementById('rf-board'), stops, 'stop_id', 'stop_name', '— None');
+  populateSelect(document.getElementById('rf-drop'), stops, 'stop_id', 'stop_name', '— None');
+  openModal('reg-modal');
+}
+async function saveReg() {
+  const id=document.getElementById('rf-id').value;
+  try {
+    if (id) {
+      await api(`/api/registrations/${id}`,'PUT',{status:document.getElementById('rf-status').value});
+    } else {
+      const body={
+        pass_id:selPassId, trip_id:document.getElementById('rf-trip').value,
+        boarding_stop_id:document.getElementById('rf-board').value||null,
+        dropoff_stop_id:document.getElementById('rf-drop').value||null,
+        status:document.getElementById('rf-status').value,
+      };
+      await api('/api/registrations','POST',body);
+    }
+    toast('Saved!'); document.getElementById('rf-trip').disabled=false;
+    closeModal('reg-modal'); loadRegs(selPassId);
+  } catch(e){toast(e.message,'error');}
+}
+async function deleteReg() {
+  if (!selRegId) return toast('Select a registration first','error');
+  if (!confirm('Delete this registration?')) return;
+  try { await api(`/api/registrations/${selRegId}`,'DELETE'); toast('Deleted'); selRegId=null; loadRegs(selPassId); }
+  catch(e){toast(e.message,'error');}
+}
+
+loadData();
+</script>
+{% endblock %}

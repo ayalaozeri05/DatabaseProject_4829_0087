@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Stops – TransRoute{% endblock %}
+{% block content %}
+<div class="page-header"><h1>📍 Stops Management</h1><p>Manage transport stops and their locations</p></div>
+
+<div class="toolbar">
+  <div class="toolbar-search"><input id="search" placeholder="Search stop name or site…" oninput="filterTable()"></div>
+  <div class="toolbar-sep"></div>
+  <button class="btn btn-success" onclick="openAdd()">＋ Add Stop</button>
+  <button class="btn btn-primary" onclick="openEdit()">✏️ Edit</button>
+  <button class="btn btn-danger"  onclick="deleteRow()">🗑 Delete</button>
+  <button class="btn btn-ghost"   onclick="loadData()">🔄 Refresh</button>
+</div>
+
+<div class="card"><div id="table-wrap"></div></div>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">Stop</h3>
+      <button class="modal-close" onclick="closeModal('modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="f-id">
+      <div class="form-grid">
+        <div class="form-group full"><label>Stop Name *</label><input id="f-name" placeholder="e.g. Central Station"></div>
+        <div class="form-group full"><label>Address *</label><input id="f-addr" placeholder="Street address"></div>
+        <div class="form-group"><label>Latitude *</label><input id="f-lat" type="number" step="0.0001" placeholder="31.0000"></div>
+        <div class="form-group"><label>Longitude *</label><input id="f-lon" type="number" step="0.0001" placeholder="34.0000"></div>
+        <div class="form-group full"><label>Site *</label><select id="f-site"></select></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal')">Cancel</button>
+      <button class="btn btn-success" onclick="save()">💾 Save</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let rows=[], selectedId=null, sites=[];
+
+async function loadData() {
+  [rows, sites] = await Promise.all([api('/api/stops'), api('/api/lookup/sites')]);
+  renderTable(rows);
+}
+
+function renderTable(data) {
+  const cols = [
+    {key:'stop_name', label:'Stop Name'},
+    {key:'address', label:'Address'},
+    {key:'site_name', label:'Site'},
+    {key:'site_type', label:'Site Type'},
+    {key:'lat', label:'Lat'},
+    {key:'lon', label:'Lon'},
+    {key:'routes_count', label:'Routes'},
+  ];
+  document.getElementById('table-wrap').innerHTML = buildTable(data, cols);
+  document.querySelectorAll('#table-wrap tbody tr').forEach((tr,i) => {
+    tr.addEventListener('click', () => {
+      document.querySelectorAll('#table-wrap tbody tr').forEach(r=>r.classList.remove('selected'));
+      tr.classList.add('selected'); selectedId=data[i].stop_id;
+    });
+  });
+}
+
+function filterTable() {
+  const q = document.getElementById('search').value.toLowerCase();
+  renderTable(rows.filter(r => (r.stop_name||'').toLowerCase().includes(q) || (r.site_name||'').toLowerCase().includes(q)));
+}
+
+function openAdd() {
+  selectedId=null;
+  document.getElementById('modal-title').textContent='Add Stop';
+  ['f-id','f-name','f-addr','f-lat','f-lon'].forEach(id=>document.getElementById(id).value='');
+  populateSelect(document.getElementById('f-site'), sites, 'site_name', 'site_name');
+  openModal('modal');
+}
+
+async function openEdit() {
+  if (!selectedId) return toast('Select a stop first','error');
+  const r = await api(`/api/stops/${selectedId}`);
+  document.getElementById('modal-title').textContent='Edit Stop';
+  document.getElementById('f-id').value   = r.stop_id;
+  document.getElementById('f-name').value = r.stop_name;
+  document.getElementById('f-addr').value = r.address;
+  document.getElementById('f-lat').value  = r.latitude;
+  document.getElementById('f-lon').value  = r.longitude;
+  populateSelect(document.getElementById('f-site'), sites, 'site_name', 'site_name');
+  document.getElementById('f-site').value = r.site_name;
+  openModal('modal');
+}
+
+async function save() {
+  const body = {
+    stop_name: document.getElementById('f-name').value.trim(),
+    address:   document.getElementById('f-addr').value.trim(),
+    lat:       document.getElementById('f-lat').value,
+    lon:       document.getElementById('f-lon').value,
+    site_name: document.getElementById('f-site').value,
+  };
+  if (!body.stop_name||!body.address||!body.lat||!body.lon||!body.site_name)
+    return toast('All fields are required','error');
+  try {
+    const id=document.getElementById('f-id').value;
+    if (id) await api(`/api/stops/${id}`,'PUT',body);
+    else    await api('/api/stops','POST',body);
+    toast('Stop saved!'); closeModal('modal'); loadData();
+  } catch(e){toast(e.message,'error');}
+}
+
+async function deleteRow() {
+  if (!selectedId) return toast('Select a stop first','error');
+  if (!confirm('Delete this stop?')) return;
+  try { await api(`/api/stops/${selectedId}`,'DELETE'); toast('Stop deleted'); selectedId=null; loadData(); }
+  catch(e){toast(e.message,'error');}
+}
+
+loadData();
+</script>
+{% endblock %}
