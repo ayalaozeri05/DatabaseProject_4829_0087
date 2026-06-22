@@ -1,19 +1,33 @@
-"""
-db_connection.py - Database connection and helper utilities
-TransRoute Planner - Phase 5
-"""
-
+import os
 import psycopg2
 import psycopg2.extras
 from contextlib import contextmanager
 
+# Load .env dynamically
+def _load_env():
+    # .env is in the parent directory of phase5
+    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+    env_data = {}
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    if "=" in line and not line.strip().startswith("#"):
+                        k, v = line.strip().split("=", 1)
+                        env_data[k.strip()] = v.strip()
+        except Exception as e:
+            print(f"Warning: could not read .env: {e}")
+    return env_data
+
+_env = _load_env()
+
 # ─── DB Config (matches .env / docker-compose) ───────────────────────────────
 DB_CONFIG = {
     "host": "localhost",
-    "port": 5433,
-    "database": "integrated_db",
-    "user": "efrat",
-    "password": "efrat",
+    "port": int(_env.get("DB_PORT", 5433)),
+    "database": _env.get("DB_NAME_SECRET", "finalll_integration"),
+    "user": _env.get("DB_USER_SECRET", "ayala"),
+    "password": _env.get("DB_PASSWORD_SECRET", "ayala"),
 }
 
 

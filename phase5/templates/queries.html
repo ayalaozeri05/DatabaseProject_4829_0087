@@ -147,6 +147,90 @@ ORDER BY avg_duration DESC</div>
   </div>
 
 </div>
+
+<div style="display:flex;gap:16px;margin:24px 0 8px">
+  <span style="font-size:13px;font-weight:700;color:var(--accent);background:var(--accent-lt);padding:4px 14px;border-radius:20px">🔍 More Phase 2 – Interactive Queries</span>
+</div>
+
+<div class="query-grid">
+
+  <!-- Query 2: Route Details (Stops order) -->
+  <div class="query-card">
+    <div class="query-card-header">
+      <h3>Query 2 – Route Stops Sequence</h3>
+      <p>Select a route to view its ordered stops and site details</p>
+    </div>
+    <div class="query-card-body">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+        <label style="font-size:12px;font-weight:600;color:var(--text-sec)">Route:</label>
+        <select id="q2-route" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px"></select>
+      </div>
+      <button class="btn btn-success" onclick="runRouteStops()">▶ View Stops</button>
+      <div class="query-result" id="q2-stops-result" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- Query 3: Trip Schedule by Date Range -->
+  <div class="query-card">
+    <div class="query-card-header">
+      <h3>Query 3 – Trip Schedule Search</h3>
+      <p>Search trips within a specific date range</p>
+    </div>
+    <div class="query-card-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div class="form-group"><label>Start Date</label><input id="q3-start" type="date"></div>
+        <div class="form-group"><label>End Date</label><input id="q3-end" type="date"></div>
+      </div>
+      <button class="btn btn-success" onclick="runScheduleRange()">▶ Search Trips</button>
+      <div class="query-result" id="q3-schedule-result" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- Query 4: Detailed Trip Occupancy Summary -->
+  <div class="query-card">
+    <div class="query-card-header">
+      <h3>Query 4 – Occupancy Summary</h3>
+      <p>Compute detailed occupancy and visual bar for a trip</p>
+    </div>
+    <div class="query-card-body">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+        <label style="font-size:12px;font-weight:600;color:var(--text-sec)">Trip ID:</label>
+        <input id="q4-trip" type="number" style="width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px" placeholder="e.g. 1">
+      </div>
+      <button class="btn btn-success" onclick="runOccupancySummary()">▶ Get Occupancy</button>
+      <div class="query-result" id="q4-occupancy-result" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- Query 7: Active Vehicles -->
+  <div class="query-card">
+    <div class="query-card-header">
+      <h3>Query 7 – Active Vehicles Breakdown</h3>
+      <p>Vehicles with at least N trips, ordered by activity</p>
+    </div>
+    <div class="query-card-body">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+        <label style="font-size:12px;font-weight:600;color:var(--text-sec)">Min Trips:</label>
+        <input id="q7-min-trips" type="number" value="1" style="width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px" min="1">
+      </div>
+      <button class="btn btn-success" onclick="runActiveVehicles()">▶ List Vehicles</button>
+      <div class="query-result" id="q7-vehicles-result" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- Query 8: Peak Travel Days -->
+  <div class="query-card" style="grid-column:1/-1">
+    <div class="query-card-header">
+      <h3>Query 8 – Busy Travel Days</h3>
+      <p>Identifies peak years, months, and days with the highest volume of scheduled trips</p>
+    </div>
+    <div class="query-card-body">
+      <button class="btn btn-success" onclick="runPeakDays()">▶ Find Peak Days</button>
+      <div class="query-result" id="q8-peak-result" style="display:none"></div>
+    </div>
+  </div>
+
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -157,9 +241,15 @@ async function initDropdowns() {
     api('/api/lookup/routes'), api('/api/lookup/vehicles'), api('/api/lookup/drivers')
   ]);
   populateSelect(document.getElementById('st-route'), routes, 'route_id', 'route_name');
+  populateSelect(document.getElementById('q2-route'), routes, 'route_id', 'route_name');
   populateSelect(document.getElementById('st-vehicle'), vehicles, 'plate_number', 'plate_number');
   populateSelect(document.getElementById('st-driver'), drivers, 'driver_id', 'driver_fullname', '— No Driver');
+  
+  // Date defaults
   document.getElementById('st-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('q3-start').value = new Date().toISOString().slice(0,10);
+  document.getElementById('q3-end').value = new Date(Date.now() + 30*24*60*60*1000).toISOString().slice(0,10); // +30 days
+  
   // Count no-driver
   try {
     const s = await api('/api/stats');
@@ -244,6 +334,82 @@ async function runAutoAssign() {
     const body = res.trips.map(t=>'<tr>'+cols.map(c=>`<td>${t[c]??'—'}</td>`).join('')+'</tr>').join('');
     el.innerHTML=`<table><thead><tr>${heads}</tr></thead><tbody>${body}</tbody></table>`;
   } catch(e){ r.style.color='var(--red)'; r.textContent='✕ ' + e.message; }
+}
+
+async function runRouteStops() {
+  const rid = document.getElementById('q2-route').value;
+  const el = document.getElementById('q2-stops-result');
+  el.style.display = 'block';
+  el.innerHTML = '<div style="padding:12px;color:var(--text-sec)">Loading…</div>';
+  try {
+    const rows = await api('/api/query/route_stops', 'POST', {route_id: parseInt(rid)});
+    const cols = ['stop_order', 'stop_name', 'address', 'estimated_arrival_time', 'site_name', 'site_type'];
+    const headers = cols.map(c => `<th>${c.replace(/_/g,' ')}</th>`).join('');
+    const body = rows.map(r => '<tr>' + cols.map(c => `<td>${r[c] ?? '—'}</td>`).join('') + '</tr>').join('');
+    el.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${body || '<tr><td colspan="6" class="no-data">No stops found</td></tr>'}</tbody></table>`;
+  } catch(e) { el.innerHTML = `<div style="padding:12px;color:var(--red)">Error: ${e.message}</div>`; }
+}
+
+async function runScheduleRange() {
+  const start = document.getElementById('q3-start').value;
+  const end = document.getElementById('q3-end').value;
+  const el = document.getElementById('q3-schedule-result');
+  el.style.display = 'block';
+  el.innerHTML = '<div style="padding:12px;color:var(--text-sec)">Loading…</div>';
+  try {
+    const rows = await api('/api/query/schedule_range', 'POST', {start_date: start, end_date: end});
+    const cols = ['trip_id', 'trip_date', 'departure_time', 'route_name', 'plate_number', 'vehicle_type', 'available_seats'];
+    const headers = cols.map(c => `<th>${c.replace(/_/g,' ')}</th>`).join('');
+    const body = rows.map(r => '<tr>' + cols.map(c => `<td>${r[c] ?? '—'}</td>`).join('') + '</tr>').join('');
+    el.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${body || '<tr><td colspan="7" class="no-data">No trips in range</td></tr>'}</tbody></table>`;
+  } catch(e) { el.innerHTML = `<div style="padding:12px;color:var(--red)">Error: ${e.message}</div>`; }
+}
+
+async function runOccupancySummary() {
+  const tid = document.getElementById('q4-trip').value;
+  if (!tid) return toast('Enter a Trip ID','error');
+  const el = document.getElementById('q4-occupancy-result');
+  el.style.display = 'block';
+  el.innerHTML = '<div style="padding:12px;color:var(--text-sec)">Loading…</div>';
+  try {
+    const rows = await api('/api/query/trip_occupancy_summary', 'POST', {trip_id: parseInt(tid)});
+    const cols = ['trip_id', 'route_name', 'trip_date', 'departure_time', 'plate_number', 'capacity', 'available_seats', 'occupied_seats', 'occupancy_percent'];
+    const headers = cols.map(c => `<th>${c.replace(/_/g,' ')}</th>`).join('');
+    const body = rows.map(r => {
+      return '<tr>' + cols.map(c => {
+        if (c === 'occupancy_percent') return `<td>${occBar(r[c])}</td>`;
+        return `<td>${r[c] ?? '—'}</td>`;
+      }).join('') + '</tr>';
+    }).join('');
+    el.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${body || '<tr><td colspan="9" class="no-data">Trip not found</td></tr>'}</tbody></table>`;
+  } catch(e) { el.innerHTML = `<div style="padding:12px;color:var(--red)">Error: ${e.message}</div>`; }
+}
+
+async function runActiveVehicles() {
+  const minTrips = document.getElementById('q7-min-trips').value;
+  const el = document.getElementById('q7-vehicles-result');
+  el.style.display = 'block';
+  el.innerHTML = '<div style="padding:12px;color:var(--text-sec)">Loading…</div>';
+  try {
+    const rows = await api('/api/query/active_vehicles', 'POST', {min_trips: parseInt(minTrips)});
+    const cols = ['plate_number', 'vehicle_type', 'capacity', 'total_trips'];
+    const headers = cols.map(c => `<th>${c.replace(/_/g,' ')}</th>`).join('');
+    const body = rows.map(r => '<tr>' + cols.map(c => `<td>${r[c] ?? '—'}</td>`).join('') + '</tr>').join('');
+    el.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${body || '<tr><td colspan="4" class="no-data">No active vehicles match</td></tr>'}</tbody></table>`;
+  } catch(e) { el.innerHTML = `<div style="padding:12px;color:var(--red)">Error: ${e.message}</div>`; }
+}
+
+async function runPeakDays() {
+  const el = document.getElementById('q8-peak-result');
+  el.style.display = 'block';
+  el.innerHTML = '<div style="padding:12px;color:var(--text-sec)">Loading…</div>';
+  try {
+    const rows = await api('/api/query/peak_days');
+    const cols = ['trip_year', 'trip_month', 'trip_day', 'total_trips'];
+    const headers = cols.map(c => `<th>${c.replace(/_/g,' ')}</th>`).join('');
+    const body = rows.map(r => '<tr>' + cols.map(c => `<td>${r[c] ?? '—'}</td>`).join('') + '</tr>').join('');
+    el.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${body || '<tr><td colspan="4" class="no-data">No data</td></tr>'}</tbody></table>`;
+  } catch(e) { el.innerHTML = `<div style="padding:12px;color:var(--red)">Error: ${e.message}</div>`; }
 }
 
 initDropdowns();

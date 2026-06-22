@@ -29,6 +29,18 @@
   </div>
 </div>
 
+<!-- Database Trigger Execution Monitor -->
+<div class="card" style="margin-top:20px; border-color: var(--accent);">
+  <div class="card-header" style="background: var(--accent-lt); color: var(--accent); display: flex; align-items: center; gap: 8px;">
+    <span style="font-size:16px;">⚡</span>
+    <h2 style="color: var(--accent); margin: 0; font-size:14px; font-weight:700;">Database Trigger Execution Monitor</h2>
+    <span style="font-size:11px; font-weight:600; background: var(--card); padding: 2px 8px; border-radius: 10px; margin-left: auto; color: var(--accent);">Real-time DB Logs</span>
+  </div>
+  <div class="card-body" id="trigger-log" style="max-height: 180px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px; color: var(--text); background: #fafafa; padding: 12px; border-radius: 0 0 12px 12px;">
+    <div style="color: var(--text-sec); font-style: italic;">No database trigger events captured yet. Perform insert/update/delete operations on registrations to see trigger logs.</div>
+  </div>
+</div>
+
 <!-- Passenger Modal -->
 <div class="modal-overlay" id="pass-modal">
   <div class="modal">
@@ -182,29 +194,133 @@ async function openEditReg() {
   populateSelect(document.getElementById('rf-drop'), stops, 'stop_id', 'stop_name', '— None');
   openModal('reg-modal');
 }
+// Trigger log helper
+function logTriggerEvent(icon, title, details, type='info') {
+  const container = document.getElementById('trigger-log');
+  if (container.innerText.includes('No database trigger events')) {
+    container.innerHTML = '';
+  }
+  const time = new Date().toLocaleTimeString();
+  const color = type === 'error' ? 'var(--red)' : type === 'success' ? 'var(--green)' : 'var(--accent)';
+  const html = `
+    <div style="margin-bottom: 8px; border-left: 3px solid ${color}; padding-left: 10px; line-height: 1.4; text-align: left;">
+      <span style="color: var(--text-sec); font-weight: 600;">[${time}]</span> 
+      <span style="color: ${color}; font-weight: 700;">${icon} ${title}</span><br>
+      <span style="color: var(--text);">${details}</span>
+    </div>
+  `;
+  container.insertAdjacentHTML('afterbegin', html);
+}
+
 async function saveReg() {
   const id=document.getElementById('rf-id').value;
+  const tripId = document.getElementById('rf-trip').value;
+  const status = document.getElementById('rf-status').value;
+  
+  let tripBefore = null;
+  try {
+    if (tripId) {
+      tripBefore = await api(`/api/trips/${tripId}`);
+    }
+  } catch(err) {
+    console.error("Could not fetch trip seats before", err);
+  }
+  
   try {
     if (id) {
-      await api(`/api/registrations/${id}`,'PUT',{status:document.getElementById('rf-status').value});
+      await api(`/api/registrations/${id}`,'PUT',{status:status});
+      toast('Saved!');
+      document.getElementById('rf-trip').disabled=false;
+      closeModal('reg-modal');
+      loadRegs(selPassId);
+      
+      // Check available seats after change
+      if (tripId && tripBefore) {
+        setTimeout(async () => {
+          try {
+            const tripAfter = await api(`/api/trips/${tripId}`);
+            if (tripBefore.available_seats !== tripAfter.available_seats) {
+              const diff = tripBefore.available_seats - tripAfter.available_seats;
+              const action = diff > 0 ? "decreased" : "increased";
+              const text = `Status changed to '${status}'. Seats for Trip #${tripId} ${action} from ${tripBefore.available_seats} to ${tripAfter.available_seats} by 'registration_status_update_trigger'.`;
+              logTriggerEvent('🔄', 'registration_status_update_trigger', text, 'success');
+              toast(`Trigger active: Seats ${action} to ${tripAfter.available_seats}`, 'success');
+            } else {
+              logTriggerEvent('🔄', 'registration_status_update_trigger', `Status changed to '${status}' (no seat count change).`, 'info');
+            }
+          } catch(err) {}
+        }, 300);
+      }
     } else {
       const body={
-        pass_id:selPassId, trip_id:document.getElementById('rf-trip').value,
+        pass_id:selPassId, trip_id:tripId,
         boarding_stop_id:document.getElementById('rf-board').value||null,
         dropoff_stop_id:document.getElementById('rf-drop').value||null,
-        status:document.getElementById('rf-status').value,
+        status:status,
       };
       await api('/api/registrations','POST',body);
+      toast('Saved!');
+      document.getElementById('rf-trip').disabled=false;
+      closeModal('reg-modal');
+      loadRegs(selPassId);
+      
+      // Check available seats after change
+      if (tripId && tripBefore) {
+        setTimeout(async () => {
+          try {
+            const tripAfter = await api(`/api/trips/${tripId}`);
+            const diff = tripBefore.available_seats - tripAfter.available_seats;
+            const action = diff > 0 ? "decreased" : "no change";
+            const text = `New registration inserted in status '${status}'. Seats for Trip #${tripId} auto-decreased from ${tripBefore.available_seats} to ${tripAfter.available_seats} by 'registration_after_insert_trigger'.`;
+            logTriggerEvent('📥', 'registration_after_insert_trigger', text, 'success');
+            toast(`Trigger active: Seats decreased to ${tripAfter.available_seats}`, 'success');
+          } catch(err) {}
+        }, 300);
+      }
     }
-    toast('Saved!'); document.getElementById('rf-trip').disabled=false;
-    closeModal('reg-modal'); loadRegs(selPassId);
-  } catch(e){toast(e.message,'error');}
+  } catch(e){
+    toast(e.message,'error');
+    logTriggerEvent('⚠️', 'Trigger Blocked Action', `Database constraint prevented registration: ${e.message}`, 'error');
+  }
 }
+
 async function deleteReg() {
   if (!selRegId) return toast('Select a registration first','error');
+  const reg = regs.find(r=>r.reg_id===selRegId);
+  const tripId = reg ? reg.trip_id : null;
   if (!confirm('Delete this registration?')) return;
-  try { await api(`/api/registrations/${selRegId}`,'DELETE'); toast('Deleted'); selRegId=null; loadRegs(selPassId); }
-  catch(e){toast(e.message,'error');}
+  
+  let tripBefore = null;
+  try {
+    if (tripId) {
+      tripBefore = await api(`/api/trips/${tripId}`);
+    }
+  } catch(err) {
+    console.error("Could not fetch trip seats before", err);
+  }
+  
+  try { 
+    await api(`/api/registrations/${selRegId}`,'DELETE'); 
+    toast('Deleted'); 
+    selRegId=null; 
+    loadRegs(selPassId); 
+    
+    // Check available seats after change
+    if (tripId && tripBefore) {
+      setTimeout(async () => {
+        try {
+          const tripAfter = await api(`/api/trips/${tripId}`);
+          const diff = tripAfter.available_seats - tripBefore.available_seats;
+          const text = `Registration deleted. Status set to Cancelled then deleted. Seats for Trip #${tripId} auto-increased from ${tripBefore.available_seats} to ${tripAfter.available_seats} by 'registration_status_update_trigger'.`;
+          logTriggerEvent('🗑', 'registration_status_update_trigger', text, 'success');
+          toast(`Trigger active: Seats increased to ${tripAfter.available_seats}`, 'success');
+        } catch(err) {}
+      }, 300);
+    }
+  } catch(e){
+    toast(e.message,'error');
+    logTriggerEvent('⚠️', 'Trigger Blocked Delete', `Database constraint prevented deletion: ${e.message}`, 'error');
+  }
 }
 
 loadData();

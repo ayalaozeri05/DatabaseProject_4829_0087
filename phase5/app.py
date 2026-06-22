@@ -423,6 +423,76 @@ def q_region_stats():
         HAVING COUNT(r.route_id)>0 ORDER BY avg_duration DESC
     """))
 
+@app.route("/api/query/route_stops", methods=["POST"])
+def q_route_stops():
+    rid = request.json.get("route_id")
+    return jsonify(fetch_all("""
+        SELECT r.route_name, rs.stop_order, s.stop_name, s.address,
+               rs.estimated_arrival_time::text AS estimated_arrival_time,
+               si.site_name, si.site_type
+        FROM route_stop rs
+        JOIN route r ON rs.route_id = r.route_id
+        JOIN stop s ON rs.stop_id = s.stop_id
+        JOIN site si ON s.site_name = si.site_name
+        WHERE r.route_id = %s
+        ORDER BY rs.stop_order
+    """, (int(rid),)))
+
+@app.route("/api/query/schedule_range", methods=["POST"])
+def q_schedule_range():
+    d = request.json
+    return jsonify(fetch_all("""
+        SELECT t.trip_id, t.trip_date::text AS trip_date, t.departure_time, r.route_name,
+               v.plate_number, v.vehicle_type, t.available_seats
+        FROM trip t
+        JOIN route r ON t.route_id = r.route_id
+        JOIN vehicle v ON t.plate_number = v.plate_number
+        WHERE t.trip_date BETWEEN %s::date AND %s::date
+        ORDER BY t.trip_date, t.departure_time
+    """, (d["start_date"], d["end_date"])))
+
+@app.route("/api/query/trip_occupancy_summary", methods=["POST"])
+def q_trip_occupancy_summary():
+    tid = request.json.get("trip_id")
+    return jsonify(fetch_all("""
+        SELECT t.trip_id, r.route_name, t.trip_date::text AS trip_date, t.departure_time,
+               v.plate_number, v.vehicle_type, v.capacity, t.available_seats,
+               (v.capacity - t.available_seats) AS occupied_seats,
+               ROUND(((v.capacity - t.available_seats)::numeric / NULLIF(v.capacity,0)) * 100, 2) AS occupancy_percent
+        FROM trip t
+        JOIN route r ON t.route_id = r.route_id
+        JOIN vehicle v ON t.plate_number = v.plate_number
+        WHERE t.trip_id = %s
+    """, (int(tid),)))
+
+@app.route("/api/query/active_vehicles", methods=["POST"])
+def q_active_vehicles():
+    min_trips = request.json.get("min_trips", 5)
+    return jsonify(fetch_all("""
+        SELECT v.plate_number, v.vehicle_type, v.capacity,
+               COUNT(t.trip_id) AS total_trips
+        FROM vehicle v
+        JOIN trip t ON v.plate_number = t.plate_number
+        GROUP BY v.plate_number, v.vehicle_type, v.capacity
+        HAVING COUNT(t.trip_id) >= %s
+        ORDER BY total_trips DESC
+    """, (int(min_trips),)))
+
+@app.route("/api/query/peak_days", methods=["GET"])
+def q_peak_days():
+    return jsonify(fetch_all("""
+        SELECT EXTRACT(YEAR FROM trip_date)::int AS trip_year,
+               EXTRACT(MONTH FROM trip_date)::int AS trip_month,
+               EXTRACT(DAY FROM trip_date)::int AS trip_day,
+               COUNT(*) AS total_trips
+        FROM trip
+        GROUP BY EXTRACT(YEAR FROM trip_date),
+                 EXTRACT(MONTH FROM trip_date),
+                 EXTRACT(DAY FROM trip_date)
+        ORDER BY total_trips DESC
+        LIMIT 15
+    """))
+
 @app.route("/api/proc/route_dashboard", methods=["POST"])
 def p_route_dashboard():
     try:
