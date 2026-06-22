@@ -1,96 +1,96 @@
-# TransRoute Planner – Phase 5: Graphical Interface
+# דוח פרויקט מסד נתונים - שלב ה' (ממשק משתמש)
+## מערכת TransRoute Planner
 
-## System Requirements
-- Python 3.10+
-- Docker Desktop (running with the `integrated_db` PostgreSQL container)
-- Internet connection (for map tiles from OpenStreetMap)
-
----
-
-## Quick Start
-
-### Step 1 – Ensure Docker is running
-Make sure your Docker containers are up:
-```bash
-cd "<project root>"
-docker-compose up -d
-```
-The PostgreSQL DB should be reachable at **localhost:5433** with database `integrated_db`.
-
-### Step 2 – Install Python dependencies
-Open a terminal in the `phase5` folder and run:
-```bash
-pip install -r requirements.txt
-```
-
-### Step 3 – Launch the application
-```bash
-python main.py
-```
+ברוכים הבאים לשלב ה' של הפרויקט - פיתוח ממשק המשתמש (GUI).
+בשלב זה בנינו ממשק משתמש מלא, מודרני ורספונסיבי המאפשר למשתמש קצה לנהל את מסד הנתונים של מערכת התחבורה מתוך הדפדפן, לבצע פעולות CRUD (יצירה, קריאה, עדכון ומחיקה) לכל ישויות המערכת (נהגים, נוסעים, מסלולים ועוד) ולהפעיל פונקציות ושגרות (Procedures) מורכבות שיצרנו בשלבים קודמים.
 
 ---
 
-## Screens
+## 1. קוד הממשק הגרפי (GUI)
+המערכת בנויה כאפליקציית Web מודרנית (Client-Server Architecture).
+כל הקוד הרלוונטי לממשק נמצא בתיקיית `phase5`:
+- **צד שרת (Backend):** קובץ `app.py` (מבוסס Flask) וקובץ החיבור למסד הנתונים `db_connection.py`. קבצים אלו מנהלים את התקשורת ואת השאילתות מול ה-PostgreSQL.
+- **צד לקוח (Frontend):** 
+  - תיקיית `templates/` מכילה את קבצי ה-HTML של מסכי המערכת השונים (Dashboard, Drivers, Passengers, Routes, Trips, Vehicles, Stops, Queries).
+  - תיקיית `static/` מכילה את העיצוב (קובץ `css/style.css`) ואת הלוגיקה העסקית בצד הלקוח (קובץ `js/main.js`).
 
-| Screen | Description |
-|--------|-------------|
-| 🏠 Dashboard | Live statistics cards, recent trips, routes-by-region chart |
-| 🗺️ Routes | Full CRUD + interactive map of route stops |
-| 🚌 Trips | Full CRUD + occupancy color coding + date filter |
-| 🚗 Vehicles | Full CRUD + trip history detail |
-| 🧑‍✈️ Drivers | Full CRUD + upcoming schedule |
-| 👤 Passengers & Registrations | CRUD for both tables; status change fires DB triggers |
-| 📍 Stops | Full CRUD + live map pin for each stop |
-| 📊 Queries & Procedures | Phase-2 queries + Phase-4 procedures/functions |
+*(בנוסף, קיים הקובץ המקורי `main.py` לאנשים שמעדיפים תצוגה מקומית בעזרת CustomTkinter).*
 
 ---
 
-## Queries & Procedures Screen
-
-### Phase 2 Queries
-- **Query 1A** – Routes dashboard: JOIN region + GROUP BY stop count
-- **Query 6** – Avg duration & distance per region (AVG + HAVING)
-
-### Phase 4 Stored Procedures / Functions
-| Name | Type | Description |
-|------|------|-------------|
-| `get_route_dashboard()` | Function (Ref Cursor) | Returns route dashboard data |
-| `calculate_trip_occupancy(trip_id)` | Table Function | Occupancy % + status per trip |
-| `schedule_new_trip(…)` | Procedure | Validates & inserts a new trip |
-| `auto_assign_drivers_to_future_trips()` | Procedure | Round-Robin driver assignment |
+## 2. כלים וטכנולוגיות (דרך העבודה)
+לצורך פיתוח האפליקציה בחרנו להשתמש בכלים הבאים:
+- **Python + Flask:** שפת פיתוח יעילה ומהירה לבניית שרת (Backend) וניהול API בצורה חלקה.
+- **PostgreSQL & Psycopg2:** מסד הנתונים של הפרויקט שמריץ את כל השאילתות, הטריגרים והפרוצדורות. חיבור השרת מתבצע בעזרת דרייבר Psycopg2 המותאם לעבודה מאובטחת ומקבילית מול פייתון.
+- **HTML5, CSS3, JavaScript (Vanilla):** בניית ממשק המשתמש (Frontend). עשינו שימוש ב-Fetch API כדי לשלוח בקשות חכמות לשרת (AJAX) ולעדכן את תצוגת הנתונים בזמן אמת בלי צורך לרענן את העמוד במלואו (חוויית Single Page Application).
+- **Leaflet.js:** ספריית קוד פתוח מתקדמת מבוססת JavaScript לשילוב והצגת מפות אינטראקטיביות (שימש אותנו במסכי התחנות והמסלולים להצגת נקודות ציון גיאוגרפיות).
 
 ---
 
-## Database Connection
-Edit `db_connection.py` if your settings differ:
-```python
-DB_CONFIG = {
-    "host":     "localhost",
-    "port":     5433,
-    "database": "integrated_db",
-    "user":     "efrat",
-    "password": "efrat",
-}
-```
+## 3. הוראות הפעלה וכניסה למערכת
+כדי להפעיל את המערכת אצלך במחשב, עקוב אחר השלבים הבאים:
+
+1. **הפעלת מסד הנתונים (Docker):**  
+   וודא ש-Docker Desktop פועל על המחשב. פתח טרמינל בתיקיית השורש של הפרויקט (איפה שנמצא הקובץ `docker-compose.yml`) והרץ:
+   ```bash
+   docker-compose up -d
+   ```
+   (הפקודה תרים את מסד הנתונים `integrated_db` שירוץ ברקע על פורט 5433).
+
+2. **התקנת ספריות הפייתון הדרושות:**  
+   פתח טרמינל בתוך תיקיית `phase5` והרץ את הפקודה להתקנת ספריות הרשת:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **הפעלת שרת האפליקציה:**  
+   באותו הטרמינל (בתוך תיקיית `phase5`), הפעל את קובץ השרת הראשי:
+   ```bash
+   python app.py
+   ```
+   השרת יופעל ויאזין לבקשות (יוצג פלט שהוא רץ על http://localhost:5000).
+
+4. **כניסה לממשק הגרפי (GUI):**  
+   פתח דפדפן (מומלץ Google Chrome, Edge או Firefox) והכנס לכתובת:  
+   [http://localhost:5000](http://localhost:5000)
 
 ---
 
-## Project Structure
-```
-phase5/
-├── main.py                    # App entry point + sidebar navigation
-├── db_connection.py           # DB helpers (fetch, execute, call procedures)
-├── requirements.txt           # Python dependencies
-├── README.md                  # This file
-└── screens/
-    ├── __init__.py
-    ├── base_screen.py         # Shared base class + UI helpers
-    ├── dashboard_screen.py    # Home dashboard
-    ├── routes_screen.py       # Routes CRUD + map
-    ├── trips_screen.py        # Trips CRUD
-    ├── vehicles_screen.py     # Vehicles CRUD
-    ├── drivers_screen.py      # Drivers CRUD
-    ├── passengers_screen.py   # Passengers + Registrations CRUD
-    ├── stops_screen.py        # Stops CRUD + map
-    └── queries_screen.py      # Phase-2 queries + Phase-4 procedures
-```
+## 4. תמונות מסך של הפעלת המערכת
+המערכת מורכבת ממספר מסכים מרכזיים. כל תמונות המסך המלאות (כולל חלונות העדכון וההוספה) שמורות עבורכם בתיקיית `photo/` הנמצאת בתוך התיקייה הזו.
+
+הנה התמונות מתוך המערכת לפי המסכים המרכזיים:
+
+### מסך הבית (Dashboard)
+מרכז שליטה המציג נתונים סטטיסטיים חיים על המערכת (כמות רכבים פעילים, נהגים, נוסעים), טיולים שיוצאים בקרוב וגרפים המפולחים לפי אזורים.
+![Dashboard](photo/Screenshot%202026-06-22%20131751.png)
+
+### ניהול מסלולים (Routes Management)
+מסך המציג פירוט מלא על מסלולי הנסיעה, נתוני מרחק וזמן, כולל אפשרויות עריכה ויצירה (CRUD).
+![Routes](photo/Screenshot%202026-06-22%20131800.png)
+
+### ניהול נהגים (Drivers Management)
+מסך מלא המציג את מצבת הנהגים, סוגי הרישיונות שלהם והטיולים המתוכננים להם.
+![Drivers](photo/Screenshot%202026-06-22%20131417.png)
+
+### ניהול צי רכבים (Vehicles Management)
+מסך המרכז את כל רכבי החברה (אוטובוסים, מיניבוסים), כולל קיבולת נוסעים ואזורי שירות.
+![Vehicles](photo/Screenshot%202026-06-22%20131821.png)
+
+### ניהול תחנות (Stops Management)
+רשימת התחנות המפורטת של הרשת התחבורתית, לפי שמות, כתובות וקואורדינטות.
+![Stops](photo/Screenshot%202026-06-22%20131948.png)
+
+### שאילתות ופרוצדורות (Queries & Stored Procedures)
+מסך מיוחד שמאפשר למשתמש להריץ ולצפות בתוצאות של שאילתות משלב 2 ופרוצדורות משלב 4 בלחיצת כפתור פשוטה.
+![Queries](photo/Screenshot%202026-06-22%20131956.png)
+
+---
+### תמונות מסך נוספות מהמערכת (חלונות עריכה, הוספה ועוד):
+![Screenshot](photo/Screenshot%202026-06-22%20125120.png)
+![Screenshot](photo/Screenshot%202026-06-22%20131153.png)
+![Screenshot](photo/Screenshot%202026-06-22%20131811.png)
+![Screenshot](photo/Screenshot%202026-06-22%20131828.png)
+![Screenshot](photo/Screenshot%202026-06-22%20123158.png)
+![Screenshot](photo/Screenshot%202026-06-22%20131843.png)
+

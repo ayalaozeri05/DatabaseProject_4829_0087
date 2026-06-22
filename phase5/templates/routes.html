@@ -95,18 +95,21 @@ function openAdd() {
 }
 
 async function openEdit() {
-  if (!selectedId) return toast('Select a route first', 'error');
-  const r = await api(`/api/routes/${selectedId}`);
-  document.getElementById('modal-title').textContent = 'Edit Route';
-  document.getElementById('f-id').value   = r.route_id;
-  document.getElementById('f-name').value = r.route_name;
-  document.getElementById('f-start').value = r.start_location;
-  document.getElementById('f-end').value  = r.end_location;
-  document.getElementById('f-dist').value = r.total_distance_km;
-  document.getElementById('f-dur').value  = r.estimated_duration_minutes;
-  populateSelect(document.getElementById('f-region'), regions, 'region_id', 'regio_name');
-  document.getElementById('f-region').value = r.region_id;
-  openModal('modal');
+  const inputId = prompt("Enter the Route ID to edit:", selectedId || "");
+  if (!inputId) return;
+  try {
+    const r = await api(`/api/routes/${inputId}`);
+    document.getElementById('modal-title').textContent = 'Edit Route';
+    document.getElementById('f-id').value   = r.route_id;
+    document.getElementById('f-name').value = r.route_name;
+    document.getElementById('f-start').value = r.start_location;
+    document.getElementById('f-end').value  = r.end_location;
+    document.getElementById('f-dist').value = r.total_distance_km;
+    document.getElementById('f-dur').value  = r.estimated_duration_minutes;
+    populateSelect(document.getElementById('f-region'), regions, 'region_id', 'regio_name');
+    document.getElementById('f-region').value = r.region_id;
+    openModal('modal');
+  } catch(e) { toast(e.message || 'Route not found', 'error'); }
 }
 
 async function save() {

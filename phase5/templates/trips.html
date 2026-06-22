@@ -108,21 +108,24 @@ function openAdd() {
 }
 
 async function openEdit() {
-  if (!selectedId) return toast('Select a trip first', 'error');
-  const r = await api(`/api/trips/${selectedId}`);
-  document.getElementById('modal-title').textContent = 'Edit Trip';
-  document.getElementById('f-id').value   = r.trip_id;
-  document.getElementById('f-date').value = r.trip_date;
-  document.getElementById('f-time').value = r.departure_time ? r.departure_time.slice(0,5) : '';
-  document.getElementById('f-booked').value = 0;
-  populateSelect(document.getElementById('f-route'), routes, 'route_id', 'route_name');
-  document.getElementById('f-route').value = r.route_id;
-  populateSelect(document.getElementById('f-vehicle'), vehicles, 'plate_number', 'plate_number');
-  document.getElementById('f-vehicle').value = r.plate_number;
-  populateSelect(document.getElementById('f-driver'), drivers, 'driver_id', 'driver_fullname', '— No Driver');
-  document.getElementById('f-driver').value = r.driver_id || '';
-  onVehicleChange();
-  openModal('modal');
+  const inputId = prompt("Enter the Trip ID to edit:", selectedId || "");
+  if (!inputId) return;
+  try {
+    const r = await api(`/api/trips/${inputId}`);
+    document.getElementById('modal-title').textContent = 'Edit Trip';
+    document.getElementById('f-id').value   = r.trip_id;
+    document.getElementById('f-date').value = r.trip_date;
+    document.getElementById('f-time').value = r.departure_time ? r.departure_time.slice(0,5) : '';
+    document.getElementById('f-booked').value = 0;
+    populateSelect(document.getElementById('f-route'), routes, 'route_id', 'route_name');
+    document.getElementById('f-route').value = r.route_id;
+    populateSelect(document.getElementById('f-vehicle'), vehicles, 'plate_number', 'plate_number');
+    document.getElementById('f-vehicle').value = r.plate_number;
+    populateSelect(document.getElementById('f-driver'), drivers, 'driver_id', 'driver_fullname', '— No Driver');
+    document.getElementById('f-driver').value = r.driver_id || '';
+    onVehicleChange();
+    openModal('modal');
+  } catch(e) { toast(e.message || 'Trip not found', 'error'); }
 }
 
 async function save() {

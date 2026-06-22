@@ -12,7 +12,7 @@ function toast(msg, type = 'success') {
 
 // API helper
 async function api(url, method = 'GET', body = null) {
-  const opts = { method, headers: {'Content-Type':'application/json'} };
+  const opts = { method, headers: {'Content-Type':'application/json'}, cache: 'no-store' };
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(url, opts);
   const json = await res.json();

@@ -3,12 +3,25 @@ app.py – TransRoute Planner Web App (Flask)
 Run: py app.py  → open http://localhost:5000
 """
 from flask import Flask, jsonify, request, render_template, abort
+from werkzeug.exceptions import HTTPException
+import psycopg2.errors
 from db_connection import (fetch_all, fetch_one, execute_dml,
                            call_procedure, call_refcursor_function,
                            call_table_function)
 from datetime import date
 
 app = Flask(__name__)
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    if isinstance(e, HTTPException):
+        return jsonify(error=str(e.description)), e.code
+    if isinstance(e, psycopg2.errors.IntegrityError):
+        return jsonify(error="Operation failed due to related records constraint. Cannot delete or update because it is in use by another table."), 400
+    if isinstance(e, psycopg2.Error):
+        return jsonify(error=f"Database error: {e.pgerror or str(e)}"), 400
+    return jsonify(error="Internal server error: " + str(e)), 500
+
 
 # ─── Helper ───────────────────────────────────────────────────────────────────
 def auto_id(table, col):
@@ -146,6 +159,8 @@ def api_routes_update(rid):
 
 @app.route("/api/routes/<int:rid>", methods=["DELETE"])
 def api_routes_delete(rid):
+    execute_dml("DELETE FROM registration WHERE trip_id IN (SELECT trip_id FROM trip WHERE route_id=%s)",(rid,))
+    execute_dml("DELETE FROM trip WHERE route_id=%s",(rid,))
     execute_dml("DELETE FROM route_stop WHERE route_id=%s",(rid,))
     execute_dml("DELETE FROM route WHERE route_id=%s",(rid,))
     return ok("Route deleted")
@@ -234,6 +249,8 @@ def api_vehicles_update(plate):
 
 @app.route("/api/vehicles/<plate>", methods=["DELETE"])
 def api_vehicles_delete(plate):
+    execute_dml("DELETE FROM registration WHERE trip_id IN (SELECT trip_id FROM trip WHERE plate_number=%s)",(plate,))
+    execute_dml("DELETE FROM trip WHERE plate_number=%s",(plate,))
     execute_dml("DELETE FROM region_vehicle WHERE plate_number=%s",(plate,))
     execute_dml("DELETE FROM vehicle WHERE plate_number=%s",(plate,))
     return ok("Vehicle deleted")
@@ -242,11 +259,11 @@ def api_vehicles_delete(plate):
 @app.route("/api/drivers", methods=["GET"])
 def api_drivers_list():
     return jsonify(fetch_all("""
-        SELECT d.driver_id, d.driver_fullname, d.phone, d.license_number,
+        SELECT d.driver_id, d.driver_fullname, d.licensetype,
                COUNT(t.trip_id) AS total_trips,
                COUNT(t.trip_id) FILTER (WHERE t.trip_date>=CURRENT_DATE) AS upcoming
         FROM driver d LEFT JOIN trip t ON t.driver_id=d.driver_id
-        GROUP BY d.driver_id,d.driver_fullname,d.phone,d.license_number
+        GROUP BY d.driver_id,d.driver_fullname,d.licensetype
         ORDER BY upcoming DESC, d.driver_fullname
     """))
 
@@ -259,15 +276,15 @@ def api_drivers_get(did):
 def api_drivers_create():
     d = request.json
     nid = auto_id("driver","driver_id")
-    execute_dml("INSERT INTO driver(driver_id,driver_fullname,phone,license_number) VALUES(%s,%s,%s,%s)",
-                (nid,d["driver_fullname"],d.get("phone") or None,d.get("license_number") or None))
+    execute_dml("INSERT INTO driver(driver_id,driver_fullname,licensetype) VALUES(%s,%s,%s)",
+                (nid,d["driver_fullname"],d.get("licensetype") or None))
     return ok("Driver created", id=nid), 201
 
 @app.route("/api/drivers/<int:did>", methods=["PUT"])
 def api_drivers_update(did):
     d = request.json
-    execute_dml("UPDATE driver SET driver_fullname=%s,phone=%s,license_number=%s WHERE driver_id=%s",
-                (d["driver_fullname"],d.get("phone") or None,d.get("license_number") or None,did))
+    execute_dml("UPDATE driver SET driver_fullname=%s,licensetype=%s WHERE driver_id=%s",
+                (d["driver_fullname"],d.get("licensetype") or None,did))
     return ok("Driver updated")
 
 @app.route("/api/drivers/<int:did>", methods=["DELETE"])
@@ -392,6 +409,8 @@ def api_stops_update(sid):
 
 @app.route("/api/stops/<int:sid>", methods=["DELETE"])
 def api_stops_delete(sid):
+    execute_dml("UPDATE registration SET boarding_stop_id=NULL WHERE boarding_stop_id=%s",(sid,))
+    execute_dml("UPDATE registration SET dropoff_stop_id=NULL WHERE dropoff_stop_id=%s",(sid,))
     execute_dml("DELETE FROM route_stop WHERE stop_id=%s",(sid,))
     execute_dml("DELETE FROM stop WHERE stop_id=%s",(sid,))
     return ok("Stop deleted")

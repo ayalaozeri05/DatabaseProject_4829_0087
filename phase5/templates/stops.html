@@ -80,17 +80,20 @@ function openAdd() {
 }
 
 async function openEdit() {
-  if (!selectedId) return toast('Select a stop first','error');
-  const r = await api(`/api/stops/${selectedId}`);
-  document.getElementById('modal-title').textContent='Edit Stop';
-  document.getElementById('f-id').value   = r.stop_id;
-  document.getElementById('f-name').value = r.stop_name;
-  document.getElementById('f-addr').value = r.address;
-  document.getElementById('f-lat').value  = r.latitude;
-  document.getElementById('f-lon').value  = r.longitude;
-  populateSelect(document.getElementById('f-site'), sites, 'site_name', 'site_name');
-  document.getElementById('f-site').value = r.site_name;
-  openModal('modal');
+  const inputId = prompt("Enter Stop ID to edit:", selectedId || "");
+  if (!inputId) return;
+  try {
+    const r = await api(`/api/stops/${inputId}`);
+    document.getElementById('modal-title').textContent='Edit Stop';
+    document.getElementById('f-id').value   = r.stop_id;
+    document.getElementById('f-name').value = r.stop_name;
+    document.getElementById('f-addr').value = r.address;
+    document.getElementById('f-lat').value  = r.latitude;
+    document.getElementById('f-lon').value  = r.longitude;
+    populateSelect(document.getElementById('f-site'), sites, 'site_name', 'site_name');
+    document.getElementById('f-site').value = r.site_name;
+    openModal('modal');
+  } catch(e) { toast(e.message || 'Stop not found', 'error'); }
 }
 
 async function save() {

@@ -33,8 +33,7 @@
       <input type="hidden" id="f-id">
       <div class="form-grid">
         <div class="form-group full"><label>Full Name *</label><input id="f-name" placeholder="Full Name"></div>
-        <div class="form-group"><label>Phone</label><input id="f-phone" placeholder="+972…"></div>
-        <div class="form-group"><label>License Number</label><input id="f-lic" placeholder="License #"></div>
+        <div class="form-group"><label>License Type</label><input id="f-lic" placeholder="e.g. B, C"></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -57,8 +56,7 @@ async function loadData() {
 function renderTable(data) {
   const cols = [
     {key:'driver_fullname', label:'Full Name'},
-    {key:'phone', label:'Phone'},
-    {key:'license_number', label:'License'},
+    {key:'licensetype', label:'License Type'},
     {key:'total_trips', label:'Total Trips'},
     {key:'upcoming', label:'Upcoming Trips'},
   ];
@@ -75,8 +73,7 @@ function filterTable() {
   const q = document.getElementById('search').value.toLowerCase();
   renderTable(rows.filter(r =>
     (r.driver_fullname||'').toLowerCase().includes(q) ||
-    (r.phone||'').toLowerCase().includes(q) ||
-    (r.license_number||'').toLowerCase().includes(q)
+    (r.licensetype||'').toLowerCase().includes(q)
   ));
 }
 
@@ -85,8 +82,7 @@ async function loadDetail(driver) {
   const myTrips = trips.filter(t => t.driver_name === driver.driver_fullname).slice(0,8);
   let html = `
     <div class="info-row"><span class="info-label">Name</span><span class="info-value">${driver.driver_fullname}</span></div>
-    <div class="info-row"><span class="info-label">Phone</span><span class="info-value">${driver.phone||'—'}</span></div>
-    <div class="info-row"><span class="info-label">License</span><span class="info-value">${driver.license_number||'—'}</span></div>
+    <div class="info-row"><span class="info-label">License Type</span><span class="info-value">${driver.licensetype||'—'}</span></div>
     <div class="info-row"><span class="info-label">Total Trips</span><span class="info-value">${driver.total_trips}</span></div>
     <div class="info-row"><span class="info-label">Upcoming Trips</span><span class="info-value" style="color:var(--accent)">${driver.upcoming}</span></div>
     <div style="margin-top:16px;font-size:12px;font-weight:700;color:var(--text-sec);text-transform:uppercase;letter-spacing:.4px">Upcoming Schedule</div>
@@ -102,26 +98,27 @@ async function loadDetail(driver) {
 function openAdd() {
   selectedId=null;
   document.getElementById('modal-title').textContent='Add Driver';
-  ['f-id','f-name','f-phone','f-lic'].forEach(id=>document.getElementById(id).value='');
+  ['f-id','f-name','f-lic'].forEach(id=>document.getElementById(id).value='');
   openModal('modal');
 }
 
 async function openEdit() {
-  if (!selectedId) return toast('Select a driver first','error');
-  const r = await api(`/api/drivers/${selectedId}`);
-  document.getElementById('modal-title').textContent='Edit Driver';
-  document.getElementById('f-id').value   = r.driver_id;
-  document.getElementById('f-name').value = r.driver_fullname;
-  document.getElementById('f-phone').value= r.phone||'';
-  document.getElementById('f-lic').value  = r.license_number||'';
-  openModal('modal');
+  const inputId = prompt("Enter the Driver ID to edit:", selectedId || "");
+  if (!inputId) return;
+  try {
+    const r = await api(`/api/drivers/${inputId}`);
+    document.getElementById('modal-title').textContent='Edit Driver';
+    document.getElementById('f-id').value   = r.driver_id;
+    document.getElementById('f-name').value = r.driver_fullname;
+    document.getElementById('f-lic').value  = r.licensetype||'';
+    openModal('modal');
+  } catch(e) { toast(e.message || 'Driver not found', 'error'); }
 }
 
 async function save() {
   const body = {
     driver_fullname: document.getElementById('f-name').value.trim(),
-    phone:           document.getElementById('f-phone').value.trim(),
-    license_number:  document.getElementById('f-lic').value.trim(),
+    licensetype:  document.getElementById('f-lic').value.trim(),
   };
   if (!body.driver_fullname) return toast('Name is required','error');
   try {

@@ -145,13 +145,16 @@ function openAddPass() {
   openModal('pass-modal');
 }
 async function openEditPass() {
-  if (!selPassId) return toast('Select a passenger first','error');
-  const r = await api(`/api/passengers/${selPassId}`);
-  document.getElementById('pm-title').textContent='Edit Passenger';
-  document.getElementById('pf-id').value   = r.pass_id;
-  document.getElementById('pf-name').value = r.pass_fullname;
-  document.getElementById('pf-phone').value= r.phone||'';
-  openModal('pass-modal');
+  const inputId = prompt("Enter Passenger ID to edit:", selPassId || "");
+  if (!inputId) return;
+  try {
+    const r = await api(`/api/passengers/${inputId}`);
+    document.getElementById('pm-title').textContent='Edit Passenger';
+    document.getElementById('pf-id').value   = r.pass_id;
+    document.getElementById('pf-name').value = r.pass_fullname;
+    document.getElementById('pf-phone').value= r.phone||'';
+    openModal('pass-modal');
+  } catch(e) { toast(e.message || 'Passenger not found', 'error'); }
 }
 async function savePass() {
   const body={pass_fullname:document.getElementById('pf-name').value.trim(), phone:document.getElementById('pf-phone').value.trim()};
@@ -182,10 +185,13 @@ function openAddReg() {
   openModal('reg-modal');
 }
 async function openEditReg() {
-  if (!selRegId) return toast('Select a registration first','error');
-  const reg = regs.find(r=>r.reg_id===selRegId);
+  const inputId = prompt("Enter Registration ID to edit:", selRegId || "");
+  if (!inputId) return;
+  const numId = parseInt(inputId, 10);
+  const reg = regs.find(r=>r.reg_id===numId);
+  if (!reg) return toast("Registration not found in this passenger's list", 'error');
   document.getElementById('rm-title').textContent='Update Status';
-  document.getElementById('rf-id').value=selRegId;
+  document.getElementById('rf-id').value=numId;
   document.getElementById('rf-status').value=reg.status;
   populateSelect(document.getElementById('rf-trip'), trips, 'trip_id', 'label');
   document.getElementById('rf-trip').value = reg.trip_id;

@@ -86,14 +86,17 @@ function openAdd() {
 }
 
 async function openEdit() {
-  if (!selectedPlate) return toast('Select a vehicle first', 'error');
-  const r = await api(`/api/vehicles/${selectedPlate}`);
-  document.getElementById('modal-title').textContent = 'Edit Vehicle';
-  document.getElementById('f-plate').value = r.plate_number;
-  document.getElementById('f-plate').readOnly = true;
-  document.getElementById('f-type').value = r.vehicle_type;
-  document.getElementById('f-cap').value  = r.capacity;
-  openModal('modal');
+  const inputId = prompt("Enter Plate Number to edit:", selectedPlate || "");
+  if (!inputId) return;
+  try {
+    const r = await api(`/api/vehicles/${inputId}`);
+    document.getElementById('modal-title').textContent = 'Edit Vehicle';
+    document.getElementById('f-plate').value = r.plate_number;
+    document.getElementById('f-plate').readOnly = true;
+    document.getElementById('f-type').value = r.vehicle_type;
+    document.getElementById('f-cap').value  = r.capacity;
+    openModal('modal');
+  } catch(e) { toast(e.message || 'Vehicle not found', 'error'); }
 }
 
 async function save() {
