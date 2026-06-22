@@ -219,10 +219,10 @@ ORDER BY avg_duration DESC</div>
   </div>
 
   <!-- Query 8: Peak Travel Days -->
-  <div class="query-card" style="grid-column:1/-1">
+  <div class="query-card">
     <div class="query-card-header">
       <h3>Query 8 – Busy Travel Days</h3>
-      <p>Identifies peak years, months, and days with the highest volume of scheduled trips</p>
+      <p>Identifies peak years, months, and days</p>
     </div>
     <div class="query-card-body">
       <button class="btn btn-success" onclick="runPeakDays()">▶ Find Peak Days</button>
@@ -230,6 +230,48 @@ ORDER BY avg_duration DESC</div>
     </div>
   </div>
 
+</div>
+
+<div style="display:flex;gap:16px;margin:24px 0 8px">
+  <span style="font-size:13px;font-weight:700;color:var(--red);background:#fee2e2;padding:4px 14px;border-radius:20px;border:1px solid #fecaca">⚠️ Phase 2 – Admin Maintenance (UPDATE / DELETE)</span>
+</div>
+
+<div class="query-grid">
+  <!-- UPDATE 1: Close Past Trips -->
+  <div class="query-card">
+    <div class="query-card-header" style="border-left-color: var(--red)">
+      <h3>UPDATE 1: Close Past Trips</h3>
+      <p>Sets available_seats = 0 for past trips</p>
+    </div>
+    <div class="query-card-body">
+      <button class="btn" style="background:var(--red);color:#fff" onclick="runMaintenance('close_past_trips', 'm1-result')">▶ Run Update</button>
+      <div id="m1-result" style="margin-top:10px;font-size:13px;font-weight:500"></div>
+    </div>
+  </div>
+
+  <!-- UPDATE 2: Adjust Long Routes -->
+  <div class="query-card">
+    <div class="query-card-header" style="border-left-color: var(--red)">
+      <h3>UPDATE 2: Adjust Long Routes</h3>
+      <p>Adds 15 min to routes > 150km</p>
+    </div>
+    <div class="query-card-body">
+      <button class="btn" style="background:var(--red);color:#fff" onclick="runMaintenance('adjust_long_routes', 'm2-result')">▶ Run Update</button>
+      <div id="m2-result" style="margin-top:10px;font-size:13px;font-weight:500"></div>
+    </div>
+  </div>
+
+  <!-- DELETE 2: Cleanup Old Full Trips -->
+  <div class="query-card">
+    <div class="query-card-header" style="border-left-color: var(--red)">
+      <h3>DELETE 2: Cleanup Old Trips</h3>
+      <p>Deletes past trips with 0 available seats</p>
+    </div>
+    <div class="query-card-body">
+      <button class="btn" style="background:var(--red);color:#fff" onclick="runMaintenance('cleanup_old_trips', 'm3-result')">▶ Run Delete</button>
+      <div id="m3-result" style="margin-top:10px;font-size:13px;font-weight:500"></div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
@@ -410,6 +452,21 @@ async function runPeakDays() {
     const body = rows.map(r => '<tr>' + cols.map(c => `<td>${r[c] ?? '—'}</td>`).join('') + '</tr>').join('');
     el.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody>${body || '<tr><td colspan="4" class="no-data">No data</td></tr>'}</tbody></table>`;
   } catch(e) { el.innerHTML = `<div style="padding:12px;color:var(--red)">Error: ${e.message}</div>`; }
+}
+
+async function runMaintenance(endpoint, resultId) {
+  const r = document.getElementById(resultId);
+  r.textContent = 'Running...';
+  r.style.color = 'var(--text-sec)';
+  try {
+    const res = await api(`/api/maintenance/${endpoint}`, 'POST');
+    r.style.color = 'var(--green)';
+    r.textContent = '✓ ' + res.message;
+    toast('Maintenance task completed!');
+  } catch(e) { 
+    r.style.color = 'var(--red)'; 
+    r.textContent = '✕ ' + e.message; 
+  }
 }
 
 initDropdowns();

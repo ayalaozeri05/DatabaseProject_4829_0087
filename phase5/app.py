@@ -146,6 +146,10 @@ def api_routes_create():
         VALUES(%s,%s,%s,%s,%s,%s,%s,%s)""",
         (nid,d["route_name"],d["start_location"],d["end_location"],
          float(d["distance_km"]),int(d["duration_min"]),str(date.today()),int(d["region_id"])))
+    
+    # שילוב משלב 2: עדכון אוטומטי למסלולים ארוכים
+    execute_dml("UPDATE route SET estimated_duration_minutes = estimated_duration_minutes + 15 WHERE total_distance_km > 150")
+    
     return ok("Route created", id=nid), 201
 
 @app.route("/api/routes/<int:rid>", methods=["PUT"])
@@ -155,6 +159,10 @@ def api_routes_update(rid):
         total_distance_km=%s,estimated_duration_minutes=%s,region_id=%s WHERE route_id=%s""",
         (d["route_name"],d["start_location"],d["end_location"],
          float(d["distance_km"]),int(d["duration_min"]),int(d["region_id"]),rid))
+    
+    # שילוב משלב 2: עדכון אוטומטי למסלולים ארוכים
+    execute_dml("UPDATE route SET estimated_duration_minutes = estimated_duration_minutes + 15 WHERE total_distance_km > 150")
+    
     return ok("Route updated")
 
 @app.route("/api/routes/<int:rid>", methods=["DELETE"])
@@ -168,6 +176,15 @@ def api_routes_delete(rid):
 # ─── TRIPS CRUD ───────────────────────────────────────────────────────────────
 @app.route("/api/trips", methods=["GET"])
 def api_trips_list():
+    # שילוב משלב 2: איפוס מקומות פנויים לנסיעות שעברו לפני טעינת הרשימה
+    execute_dml("UPDATE trip SET available_seats = 0 WHERE trip_date < CURRENT_DATE AND available_seats > 0")
+    
+    # שילוב משלב 4: שיבוץ אוטומטי של נהגים פנויים לטיולים עתידיים בכל פעם שטוענים את רשימת הטיולים!
+    try:
+        call_procedure("auto_assign_drivers_to_future_trips", [])
+    except Exception as e:
+        print("Auto-assign failed:", e)
+        
     return jsonify(fetch_all("""
         SELECT t.trip_id, t.trip_date, t.departure_time, r.route_name,
                COALESCE(d.driver_fullname,'—') AS driver_name,
@@ -183,20 +200,41 @@ def api_trips_list():
 @app.route("/api/trips/<int:tid>", methods=["GET"])
 def api_trips_get(tid):
     r = fetch_one("SELECT * FROM trip WHERE trip_id=%s",(tid,))
+    
+    # שילוב משלב 4: שימוש בפונקציית הטבלה כדי להעשיר את פרטי הטיול בנתוני תפוסה!
+    try:
+        if r:
+            occ = fetch_one("SELECT * FROM calculate_trip_occupancy(%s)", (tid,))
+            if occ:
+                r['occupancy_status'] = occ['status_text']
+                r['occupancy_percent'] = occ['occupancy_percent']
+    except Exception as e:
+        print("Occupancy function failed:", e)
+        
     return jsonify(r) if r else abort(404)
 
 @app.route("/api/trips", methods=["POST"])
 def api_trips_create():
     d = request.json
     nid = auto_id("trip","trip_id")
-    v = fetch_one("SELECT capacity FROM vehicle WHERE plate_number=%s",(d["plate_number"],))
-    cap = v["capacity"] if v else 0
-    avail = cap - int(d.get("booked",0))
     did = int(d["driver_id"]) if d.get("driver_id") else None
-    execute_dml("""INSERT INTO trip(trip_id,trip_date,departure_time,available_seats,
-        route_id,plate_number,driver_id) VALUES(%s,%s,%s,%s,%s,%s,%s)""",
-        (nid,d["trip_date"],d["departure_time"],avail,int(d["route_id"]),d["plate_number"],did))
-    return ok("Trip created", id=nid), 201
+    expected_passengers = int(d.get("booked", 0))
+    
+    try:
+        # שימוש בפרוצדורה משלב 4 במקום INSERT רגיל!
+        call_procedure("schedule_new_trip", (
+            nid,
+            int(d["route_id"]),
+            d["trip_date"],
+            str(d["departure_time"]),
+            expected_passengers,
+            str(d["plate_number"]),
+            did
+        ))
+        return ok("Trip created using Stored Procedure", id=nid), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
 
 @app.route("/api/trips/<int:tid>", methods=["PUT"])
 def api_trips_update(tid):
@@ -557,6 +595,26 @@ def p_auto_assign():
         return jsonify({"message":"Drivers assigned!", "trips": rows})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# ─── MAINTENANCE (Phase 2 UPDATE / DELETE QUERIES) ────────────────────────────
+@app.route("/api/maintenance/close_past_trips", methods=["POST"])
+def m_close_past_trips():
+    c = execute_dml("UPDATE trip SET available_seats = 0 WHERE trip_date < CURRENT_DATE AND available_seats > 0")
+    return ok(f"Closed {c} past trips successfully")
+
+@app.route("/api/maintenance/adjust_long_routes", methods=["POST"])
+def m_adjust_long_routes():
+    c = execute_dml("UPDATE route SET estimated_duration_minutes = estimated_duration_minutes + 15 WHERE total_distance_km > 150")
+    return ok(f"Adjusted duration for {c} long routes")
+
+@app.route("/api/maintenance/cleanup_old_trips", methods=["POST"])
+def m_cleanup_old_trips():
+    try:
+        execute_dml("DELETE FROM registration WHERE trip_id IN (SELECT trip_id FROM trip WHERE trip_date < CURRENT_DATE AND available_seats = 0)")
+        c = execute_dml("DELETE FROM trip WHERE trip_date < CURRENT_DATE AND available_seats = 0")
+        return ok(f"Deleted {c} old full trips")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
 # ─── Launch ───────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
