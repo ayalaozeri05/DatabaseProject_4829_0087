@@ -1,0 +1,2 @@
+[2026-06-22T10:55:26.340720800Z][Docker Desktop.exe] launching  C:\Program Files\Docker\Docker\resources\com.docker.backend.exe
+[2026-06-22T10:55:26.348442200Z][Docker Desktop.exe] backend process started
