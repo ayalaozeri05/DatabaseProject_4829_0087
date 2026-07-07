@@ -1,20 +1,20 @@
 -- ========================================================
--- Integrate.sql - Stage C Integration
--- Run on: integrated_db
--- Source database: other_db_temp
--- Assumption: integrated_db already contains the original system data.
--- Purpose: add the second system structure and data without deleting existing data.
+-- int.sql - אינטגרציה של שלב ג'
+-- הרצה על: integrated_db
+-- מסד נתונים מקור: other_db_temp
+-- הנחת יסוד: integrated_db כבר מכיל את הנתונים של המערכת המקורית.
+-- מטרה: הוספת המבנה והנתונים של המערכת השנייה ללא מחיקת הנתונים הקיימים.
 -- ========================================================
 
 BEGIN;
 
 -- ========================================================
--- 0) Enable dblink
+-- 0) הפעלת הרחבת dblink
 -- ========================================================
 CREATE EXTENSION IF NOT EXISTS dblink;
 
 -- ========================================================
--- 1) Add missing tables from the second system
+-- 1) הוספת הטבלאות החסרות מהמערכת השנייה
 -- ========================================================
 CREATE TABLE IF NOT EXISTS public.driver (
     driver_id INTEGER PRIMARY KEY,
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS public.includes (
 );
 
 -- ========================================================
--- 2) Add missing columns and widen short text fields
+-- 2) הוספת עמודות חסרות והרחבת שדות טקסט קצרים
 -- ========================================================
 ALTER TABLE public.trip
 ADD COLUMN IF NOT EXISTS driver_id INTEGER;
@@ -83,11 +83,11 @@ ALTER TABLE public.registration
 ALTER COLUMN status TYPE VARCHAR(30);
 
 -- ========================================================
--- 3) Copy data from other_db_temp
--- Integer IDs from the second system receive +10000 to avoid collisions.
+-- 3) העתקת נתונים מ-other_db_temp
+-- מזהי מפתחות (IDs) מסוג מספר שלם מהמערכת השנייה מקבלים תוספת של 10000 כדי למנוע התנגשויות.
 -- ========================================================
 
--- 3.1 vehicle
+-- 3.1 רכבים (vehicle)
 INSERT INTO public.vehicle (plate_number, vehicle_type, capacity)
 SELECT src.plate_number, src.vehicle_type, src.capacity
 FROM dblink(
@@ -104,7 +104,7 @@ WHERE NOT EXISTS (
     WHERE v.plate_number = src.plate_number
 );
 
--- 3.2 route
+-- 3.2 מסלולים (route)
 INSERT INTO public.route (
     route_id,
     route_name,
@@ -137,7 +137,7 @@ WHERE NOT EXISTS (
     WHERE r.route_id = src.route_id + 10000
 );
 
--- 3.3 stop
+-- 3.3 תחנות (stop)
 INSERT INTO public.stop (
     stop_id,
     stop_name,
@@ -166,7 +166,7 @@ WHERE NOT EXISTS (
     WHERE s.stop_id = src.stop_id + 10000
 );
 
--- 3.4 driver
+-- 3.4 נהגים (driver)
 INSERT INTO public.driver (
     driver_id,
     driver_fullname,
@@ -191,7 +191,7 @@ WHERE NOT EXISTS (
     WHERE d.driver_id = src.driver_id + 10000
 );
 
--- 3.5 passenger
+-- 3.5 נוסעים (passenger)
 INSERT INTO public.passenger (
     pass_id,
     pass_fullname,
@@ -236,7 +236,7 @@ WHERE NOT EXISTS (
       AND i.stop_id = src.stop_id + 10000
 );
 
--- 3.7 route_stop
+-- 3.7 סדר תחנות במסלול (route_stop)
 INSERT INTO public.route_stop (
     stop_order,
     estimated_arrival_time,
@@ -265,7 +265,7 @@ WHERE NOT EXISTS (
       AND rs.stop_id = src.stop_id + 10000
 );
 
--- 3.8 trip
+-- 3.8 נסיעות (trip)
 INSERT INTO public.trip (
     trip_id,
     trip_date,
@@ -301,7 +301,7 @@ WHERE NOT EXISTS (
     WHERE t.trip_id = src.trip_id + 10000
 );
 
--- 3.9 registration
+-- 3.9 הרשמות (registration)
 INSERT INTO public.registration (
     reg_id,
     status,
@@ -336,7 +336,7 @@ WHERE NOT EXISTS (
 ON CONFLICT (reg_id) DO NOTHING;
 
 -- ========================================================
--- 4) Add or refresh foreign keys
+-- 4) הוספה או ריענון של מפתחות זרים (Foreign Keys)
 -- ========================================================
 ALTER TABLE public.trip
 DROP CONSTRAINT IF EXISTS fk_trip_driver;
@@ -397,7 +397,7 @@ REFERENCES public.stop(stop_id);
 COMMIT;
 
 -- ========================================================
--- 5) Final row-count check
+-- 5) בדיקה סופית של ספירת שורות בכל טבלה
 -- ========================================================
 SELECT 'region' AS table_name, COUNT(*) FROM public.region
 UNION ALL

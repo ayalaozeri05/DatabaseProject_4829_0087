@@ -14,10 +14,10 @@ LEFT JOIN public.route_stop rs ON r.route_id = rs.route_id
 GROUP BY r.route_id, r.route_name, r.start_location, r.end_location, reg.regio_name, reg.terrain_type;
 
 -- שאילתא 1 על מבט 1: הצגת מסלולים עם יותר מ-2 תחנות
--- SELECT * FROM view_route_summary WHERE total_stops > 2 ORDER BY route_id;
+SELECT * FROM view_route_summary WHERE total_stops > 2 ORDER BY route_id;
 
 -- שאילתא 2 על מבט 1: חישוב ממוצע תחנות למסלול לפי כל אזור
--- SELECT regio_name, AVG(total_stops) AS avg_stops FROM view_route_summary GROUP BY regio_name;
+SELECT regio_name, AVG(total_stops) AS avg_stops FROM view_route_summary GROUP BY regio_name;
 
 
 -- מבט 2: מנקודת המבט של האגף החדש שקיבלנו (ניהול נוסעים, נהגים והרשמות)
@@ -31,10 +31,15 @@ JOIN public.registration reg ON p.pass_id = reg.pass_id
 JOIN public.trip_5626 t ON reg.trip_id = t.trip_id;
 
 -- שאילתא 1 על מבט 2: שליפת הרשמות שאושרו בלבד
--- SELECT * FROM view_passenger_trip_details WHERE status = 'Confirmed' ORDER BY trip_date;
+SELECT * FROM view_passenger_trip_details WHERE status = 'Confirmed' ORDER BY trip_date;
 
 -- שאילתא 2 על מבט 2: ספירת כמות הנסיעות של כל נוסע (לנוסעים שנסעו לפחות פעם אחת)
--- SELECT pass_fullname, COUNT(trip_id) AS total_trips FROM view_passenger_trip_details GROUP BY pass_fullname ORDER BY total_trips DESC;
+ SELECT pass_fullname, COUNT(trip_id) AS total_trips
+  FROM view_passenger_trip_details
+   GROUP BY pass_fullname ORDER BY total_trips DESC;
+-- מבט 3: schedule_trip_view
+-- מבט מנקודת המבט של ניהול לוחות הזמנים והנסיעות.
+-- המבט מציג מידע משולב על נסיעות מתוזמנות, כולל פרטי המסלול (מוצא ויעד), פרטי הנהג וסוג הרכב.
 CREATE OR REPLACE VIEW schedule_trip_view AS
 SELECT
     t.trip_id,
