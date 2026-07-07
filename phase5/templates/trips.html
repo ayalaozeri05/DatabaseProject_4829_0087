@@ -65,6 +65,7 @@ function renderTable(data) {
     {key:'plate_number', label:'Vehicle'},
     {key:'capacity', label:'Capacity'},
     {key:'available_seats', label:'Seats Left'},
+    {key:'status_text', label:'Status'},
     {key:'occupancy_pct', label:'Occupancy', render: r => occBar(r.occupancy_pct)},
   ];
   document.getElementById('table-wrap').innerHTML = buildTable(data, cols);
