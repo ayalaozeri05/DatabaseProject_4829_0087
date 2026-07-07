@@ -33,6 +33,8 @@ def ok(msg="OK", **kw):
 
 # ─── Page views ───────────────────────────────────────────────────────────────
 @app.route("/")
+def pg_login(): return render_template("login.html")
+@app.route("/dashboard")
 def pg_dashboard(): return render_template("dashboard.html")
 @app.route("/routes")
 def pg_routes(): return render_template("routes.html")
@@ -115,22 +117,19 @@ def lk_stops():
 def lk_sites():
     return jsonify(fetch_all("SELECT site_name FROM site ORDER BY site_name"))
 
+@app.route("/api/lookup/locations")
+def lk_locations():
+    return jsonify(fetch_all("SELECT loc FROM (SELECT start_location AS loc FROM route UNION SELECT end_location AS loc FROM route) t WHERE loc IS NOT NULL AND loc != '' ORDER BY loc"))
+
 # ─── ROUTES CRUD ──────────────────────────────────────────────────────────────
 @app.route("/api/routes", methods=["GET"])
 def api_routes_list():
-    return jsonify(fetch_all("""
-        SELECT r.route_id, r.route_name, reg.regio_name AS region,
-               r.start_location, r.end_location,
-               r.total_distance_km AS distance_km,
-               r.estimated_duration_minutes AS duration_min,
-               COALESCE(rs.sc,0)::int AS stops,
-               COALESCE(t.ft,0)::int AS future_trips
-        FROM route r
-        LEFT JOIN region reg ON reg.region_id=r.region_id
-        LEFT JOIN (SELECT route_id,COUNT(*) AS sc FROM route_stop GROUP BY route_id) rs ON rs.route_id=r.route_id
-        LEFT JOIN (SELECT route_id,COUNT(*) AS ft FROM trip WHERE trip_date>=CURRENT_DATE GROUP BY route_id) t ON t.route_id=r.route_id
-        ORDER BY r.route_id
-    """))
+    try:
+        rows = call_refcursor_function("SELECT get_route_dashboard()", 'FETCH ALL FROM "route_dashboard_cursor"')
+        return jsonify(rows)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route("/api/routes/<int:rid>", methods=["GET"])
 def api_routes_get(rid):
@@ -188,12 +187,13 @@ def api_trips_list():
     return jsonify(fetch_all("""
         SELECT t.trip_id, t.trip_date, t.departure_time, r.route_name,
                COALESCE(d.driver_fullname,'—') AS driver_name,
-               t.plate_number, v.capacity, t.available_seats,
-               ROUND(((v.capacity-t.available_seats)::numeric/NULLIF(v.capacity,0))*100,1) AS occupancy_pct
+               t.plate_number, v.capacity, occ.available_seats,
+               occ.occupancy_percent AS occupancy_pct, occ.status_text
         FROM trip t
         JOIN route r ON r.route_id=t.route_id
         JOIN vehicle v ON v.plate_number=t.plate_number
         LEFT JOIN driver d ON d.driver_id=t.driver_id
+        LEFT JOIN LATERAL calculate_trip_occupancy(t.trip_id) occ ON TRUE
         ORDER BY t.trip_date DESC, t.departure_time DESC
     """))
 

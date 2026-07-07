@@ -9,11 +9,12 @@
 <body>
 
 <!-- ── Navbar ──────────────────────────────────────────────────────────────── -->
+{% block nav %}
 <nav class="navbar">
-  <a href="/" class="navbar-logo"><span>🚌</span> TransRoute Planner</a>
+  <a href="/dashboard" class="navbar-logo"><span>🚌</span> TransRoute Planner</a>
   <div class="navbar-divider"></div>
   <div class="navbar-nav">
-    <a href="/"           class="nav-link">🏠 Dashboard</a>
+    <a href="/dashboard"  class="nav-link">🏠 Dashboard</a>
     <a href="/routes"     class="nav-link">🗺️ Routes</a>
     <a href="/trips"      class="nav-link">🚌 Trips</a>
     <a href="/vehicles"   class="nav-link">🚗 Vehicles</a>
@@ -26,6 +27,7 @@
     <span class="db-badge" id="db-status">● Connected</span>
   </div>
 </nav>
+{% endblock %}
 
 <!-- ── Content ─────────────────────────────────────────────────────────────── -->
 <div class="page-wrap">
