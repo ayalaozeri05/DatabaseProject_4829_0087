@@ -32,8 +32,10 @@ def ok(msg="OK", **kw):
     return jsonify({"message": msg, **kw})
 
 # ─── Page views ───────────────────────────────────────────────────────────────
+from flask import redirect
+
 @app.route("/")
-def pg_login(): return render_template("login.html")
+def pg_login(): return redirect("/dashboard")
 @app.route("/dashboard")
 def pg_dashboard(): return render_template("dashboard.html")
 @app.route("/routes")
