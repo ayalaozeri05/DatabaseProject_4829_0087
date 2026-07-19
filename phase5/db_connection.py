@@ -23,17 +23,28 @@ _env = _load_env()
 
 # ─── DB Config (matches .env / docker-compose) ───────────────────────────────
 DB_CONFIG = {
-    "host": "localhost",
-    "port": int(_env.get("DB_PORT", 5433)),
-    "database": _env.get("DB_NAME_SECRET", "finalll_integration"),
-    "user": _env.get("DB_USER_SECRET", "ayala"),
-    "password": _env.get("DB_PASSWORD_SECRET", "ayala"),
+    "host": os.getenv("DB_HOST", "localhost"),
+    "port": int(os.getenv("DB_PORT", 5432)),
+    "database": os.getenv("DB_NAME", _env.get("DB_NAME_SECRET", "finalll_integration")),
+    "user": os.getenv("DB_USER", _env.get("DB_USER_SECRET", "ayala")),
+    "password": os.getenv("DB_PASSWORD", _env.get("DB_PASSWORD_SECRET", "ayala")),
 }
 
 
 def get_connection():
-    """Return a new psycopg2 connection."""
-    return psycopg2.connect(**DB_CONFIG)
+    """Return a new psycopg2 connection with a retry mechanism."""
+    import time
+    retries = 5
+    for i in range(retries):
+        try:
+            return psycopg2.connect(**DB_CONFIG)
+        except Exception as e:
+            if i < retries - 1:
+                print(f"Database connection failed, retrying in 2 seconds... ({i+1}/{retries})")
+                time.sleep(2)
+            else:
+                print("Failed to connect to the database after multiple attempts.")
+                raise e
 
 
 @contextmanager

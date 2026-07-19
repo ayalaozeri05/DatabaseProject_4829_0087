@@ -1,54 +1,34 @@
 version: '3.8'
 
 services:
-  # -------------------------
-  # PostgreSQL Database
-  # -------------------------
   db:
-    image: postgres:latest
-    container_name: PostgreSQL_DB
+    image: postgres:15
+    container_name: postgres_db
     restart: always
     environment:
-      POSTGRES_USER: ${DB_USER_SECRET}
-      POSTGRES_PASSWORD: ${DB_PASSWORD_SECRET}
-      POSTGRES_DB: ${DB_NAME_SECRET}
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_DB: mydatabase
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
-      - ./init-db:/docker-entrypoint-initdb.d
-      - postgres_data:/var/lib/postgresql
-    networks:
-      - zoo_network
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
 
-  # -------------------------
-  # pgAdmin
-  # -------------------------
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: pgadminApp
+  web:
+    build: .
+    container_name: flask_web
     restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
     ports:
-      - "8080:80"
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
+      - "5000:5000"
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: admin
+      DB_PASSWORD: mysecretpassword
+      DB_NAME: mydatabase
     depends_on:
       - db
-    networks:
-      - zoo_network
 
-# -------------------------
-# Volumes
-# -------------------------
 volumes:
   postgres_data:
-  pgadmin_data:
-
-# -------------------------
-# Networks
-# -------------------------
-networks:
-  zoo_network:
-    driver: bridge
